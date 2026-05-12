@@ -1,0 +1,134 @@
+"""
+QA-Final-V4 — Enterprise-Grade MCP Server for Azure DevOps QA Automation
+
+Entry point and tool aggregator. Imports plain functions from core/ modules
+and registers them as MCP tools. No business logic lives here.
+
+Architecture: core/utils.py  → shared helpers
+              core/discovery.py → Skills 0, 1, legacy
+              core/engines.py   → Skills 3, 4, 9, legacy
+              core/analysis.py  → Skills 5, 7
+              core/output_manager.py → Skills 8, 10, 11a, 11b
+
+Credentials: loaded exclusively from .env — never hard-coded here or in mcp-config.json.
+"""
+
+import os
+import sys
+from dotenv import load_dotenv
+
+# ─── Load .env BEFORE any core import that might read env vars at module level ───
+load_dotenv()
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# STARTUP VALIDATION — fail fast with actionable messages
+# ─────────────────────────────────────────────────────────────────────────────
+
+def _validate_config() -> None:
+    """Validates required environment variables at startup. Aborts on failure."""
+    required = {
+        "AZURE_PAT": "Azure DevOps Personal Access Token",
+        "AZURE_ORG_URL": "Azure DevOps Organization URL (e.g. https://dev.azure.com/yourorg)",
+        "AZURE_PROJECT": "Azure DevOps Project Name"
+    }
+    missing = []
+    for var, description in required.items():
+        value = os.getenv(var)
+        if not value or not value.strip():
+            missing.append(f"  {var}: {description}")
+
+    if missing:
+        print(
+            "\n[QA-Final-V4] STARTUP ERROR — Missing required environment variables:\n"
+            + "\n".join(missing)
+            + "\n\nCreate or update D:\\azure-mcp\\.env with the missing values.\n"
+            "See CLAUDE.md for setup instructions.\n",
+            file=sys.stderr
+        )
+        sys.exit(1)
+
+    pat = os.getenv("AZURE_PAT", "")
+    if len(pat.strip()) < 20:
+        print(
+            "\n[QA-Final-V4] STARTUP ERROR — AZURE_PAT appears invalid (too short).\n"
+            "Regenerate your PAT in Azure DevOps → User Settings → Personal Access Tokens.\n",
+            file=sys.stderr
+        )
+        sys.exit(1)
+
+
+_validate_config()
+
+
+# ─── Import core modules AFTER validation and dotenv load ────────────────────
+from mcp.server.fastmcp import FastMCP
+
+from core.discovery import (
+    check_pbi_duplicates,
+    get_pbis_from_sprint,
+    get_story_for_analysis,
+)
+from core.engines import (
+    create_arabic_test_case,
+    create_english_test_case,
+    execute_qa_feedback,
+    add_full_test_case,
+)
+from core.analysis import (
+    review_test_coverage,
+    generate_qa_report,
+)
+from core.output_manager import (
+    generate_playwright_yaml,
+    generate_uat_document,
+    review_uat_document,
+    create_revised_uat_document,
+)
+
+
+mcp = FastMCP("QA-Final-V4")
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# TOOL REGISTRATION
+# Decorate each imported function exactly once. Docstrings are preserved from
+# the core modules — FastMCP uses them as tool descriptions for the LLM.
+# ─────────────────────────────────────────────────────────────────────────────
+
+# ── Legacy (backward compatibility) ──────────────────────────────────────────
+mcp.tool()(get_story_for_analysis)
+mcp.tool()(add_full_test_case)
+
+# ── Skill 0: PBI Deduplication ────────────────────────────────────────────────
+mcp.tool()(check_pbi_duplicates)
+
+# ── Skill 1: Smart PBI Discovery ─────────────────────────────────────────────
+mcp.tool()(get_pbis_from_sprint)
+
+# ── Skills 3 & 4: Bilingual TC Engines ───────────────────────────────────────
+mcp.tool()(create_arabic_test_case)
+mcp.tool()(create_english_test_case)
+
+# ── Skill 5: Gap Analysis & Coverage ─────────────────────────────────────────
+mcp.tool()(review_test_coverage)
+
+# ── Skill 7: Executive QA Dashboard ──────────────────────────────────────────
+mcp.tool()(generate_qa_report)
+
+# ── Skill 8: Smart YAML Automation ───────────────────────────────────────────
+mcp.tool()(generate_playwright_yaml)
+
+# ── Skill 9: Managerial Feedback Loop ────────────────────────────────────────
+mcp.tool()(execute_qa_feedback)
+
+# ── Skill 10: Client-Ready UAT Generation ────────────────────────────────────
+mcp.tool()(generate_uat_document)
+
+# ── Skills 11a & 11b: UAT Review & Revision ──────────────────────────────────
+mcp.tool()(review_uat_document)
+mcp.tool()(create_revised_uat_document)
+
+
+if __name__ == "__main__":
+    mcp.run(transport='stdio')

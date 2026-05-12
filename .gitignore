@@ -1,0 +1,25 @@
+# Secrets and Sensitive Info
+.env
+mcp-config.json
+
+# Environment and Cache
+.venv/
+__pycache__/
+core/__pycache__/
+.vscode/
+
+# Project Artifacts (UAT, Reports, Summaries)
+outputs/
+unpacked_uat/
+scratch/
+docs/
+*.docx
+*.pdf
+*.log
+
+# Sprint workflow (contains project-specific names)
+Run_Sprint_Workflow.py
+
+# AI/Project specific
+CLAUDE.md
+.claude/
