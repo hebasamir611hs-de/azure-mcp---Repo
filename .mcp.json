@@ -1,0 +1,14 @@
+{
+  "mcpServers": {
+    "azure-devops": {
+      "command": "C:\\Users\\MahmoudSamy\\AppData\\Local\\Programs\\Python\\Python314\\python.exe",
+      "args": [
+        "-u",
+        "D:\\Ai\\AzureMCP\\server.py"
+      ],
+      "env": {
+        "PYTHONUNBUFFERED": "1"
+      }
+    }
+  }
+}

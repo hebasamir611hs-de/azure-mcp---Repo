@@ -8,7 +8,7 @@ Architecture: core/utils.py  → shared helpers
               core/discovery.py → Skills 0, 1, legacy
               core/engines.py   → Skills 3, 4, 9, legacy
               core/analysis.py  → Skills 5, 7
-              core/output_manager.py → Skills 8, 10, 11a, 11b
+              core/output_manager.py → Skill 11a
 
 Credentials: loaded exclusively from .env — never hard-coded here or in mcp-config.json.
 """
@@ -88,10 +88,7 @@ from core.analysis import (
     generate_qa_report,
 )
 from core.output_manager import (
-    generate_playwright_yaml,
-    generate_uat_document,
     review_uat_document,
-    create_revised_uat_document,
 )
 from core.test_planner import (
     create_test_plan,
@@ -140,18 +137,13 @@ mcp.tool()(review_test_coverage)
 # ── Skill 7: Executive QA Dashboard ──────────────────────────────────────────
 mcp.tool()(generate_qa_report)
 
-# ── Skill 8: Smart YAML Automation ───────────────────────────────────────────
-mcp.tool()(generate_playwright_yaml)
-
 # ── Skill 9: Managerial Feedback Loop ────────────────────────────────────────
 mcp.tool()(execute_qa_feedback)
 
-# ── Skill 10: Client-Ready UAT Generation ────────────────────────────────────
-mcp.tool()(generate_uat_document)
-
-# ── Skills 11a & 11b: UAT Review & Revision ──────────────────────────────────
+# ── Skill 11a: UAT Review ────────────────────────────────────────────────────
+# UAT document *creation* is not an MCP tool — the drafter subagent owns it
+# (see .claude/skills/build-uat-doc). The MCP only parses docs for review.
 mcp.tool()(review_uat_document)
-mcp.tool()(create_revised_uat_document)
 
 # ── Skill 12: Test Plan Creation ──────────────────────────────────────────────
 mcp.tool()(create_test_plan)
