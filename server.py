@@ -8,17 +8,19 @@ Architecture: core/utils.py  → shared helpers
               core/discovery.py → Skills 0, 1, legacy
               core/engines.py   → Skills 3, 4, 9, legacy
               core/analysis.py  → Skills 5, 7
-              core/output_manager.py → Skills 8, 10, 11a, 11b
+              core/output_manager.py → Skill 11a
 
 Credentials: loaded exclusively from .env — never hard-coded here or in mcp-config.json.
 """
 
 import os
 import sys
+from pathlib import Path
 from dotenv import load_dotenv
 
 # ─── Load .env BEFORE any core import that might read env vars at module level ───
-load_dotenv()
+env_path = Path(__file__).resolve().parent / ".env"
+load_dotenv(dotenv_path=env_path)
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -42,7 +44,7 @@ def _validate_config() -> None:
         print(
             "\n[QA-Final-V4] STARTUP ERROR — Missing required environment variables:\n"
             + "\n".join(missing)
-            + "\n\nCreate or update D:\\azure-mcp\\.env with the missing values.\n"
+            + f"\n\nCreate or update {env_path} with the missing values.\n"
             "See CLAUDE.md for setup instructions.\n",
             file=sys.stderr
         )
@@ -69,6 +71,12 @@ from core.discovery import (
     get_pbis_from_sprint,
     get_story_for_analysis,
 )
+from core.reporting import (
+    create_work_item_query,
+    get_query_summary,
+    get_test_outcome_summary,
+    get_test_run_outcome_summary,
+)
 from core.engines import (
     create_arabic_test_case,
     create_english_test_case,
@@ -80,10 +88,13 @@ from core.analysis import (
     generate_qa_report,
 )
 from core.output_manager import (
-    generate_playwright_yaml,
-    generate_uat_document,
     review_uat_document,
-    create_revised_uat_document,
+)
+from core.test_planner import (
+    create_test_plan,
+    create_test_suites_for_sprint,
+    create_test_suite_for_pbi,
+    get_test_cases_from_suite,
 )
 
 
@@ -106,6 +117,16 @@ mcp.tool()(check_pbi_duplicates)
 # ── Skill 1: Smart PBI Discovery ─────────────────────────────────────────────
 mcp.tool()(get_pbis_from_sprint)
 
+# ── Skill 2: Query Creation (core/reporting.py) ──────────────────────────────
+mcp.tool()(create_work_item_query)
+
+# ── Skill 3: Query Summary (core/reporting.py) ───────────────────────────────
+mcp.tool()(get_query_summary)
+
+# ── Test Outcomes: Get Test Suite Results & Test Run Results ───────────────
+mcp.tool()(get_test_outcome_summary)
+mcp.tool()(get_test_run_outcome_summary)
+
 # ── Skills 3 & 4: Bilingual TC Engines ───────────────────────────────────────
 mcp.tool()(create_arabic_test_case)
 mcp.tool()(create_english_test_case)
@@ -116,18 +137,25 @@ mcp.tool()(review_test_coverage)
 # ── Skill 7: Executive QA Dashboard ──────────────────────────────────────────
 mcp.tool()(generate_qa_report)
 
-# ── Skill 8: Smart YAML Automation ───────────────────────────────────────────
-mcp.tool()(generate_playwright_yaml)
-
 # ── Skill 9: Managerial Feedback Loop ────────────────────────────────────────
 mcp.tool()(execute_qa_feedback)
 
-# ── Skill 10: Client-Ready UAT Generation ────────────────────────────────────
-mcp.tool()(generate_uat_document)
-
-# ── Skills 11a & 11b: UAT Review & Revision ──────────────────────────────────
+# ── Skill 11a: UAT Review ────────────────────────────────────────────────────
+# UAT document *creation* is not an MCP tool — the drafter subagent owns it
+# (see .claude/skills/build-uat-doc). The MCP only parses docs for review.
 mcp.tool()(review_uat_document)
-mcp.tool()(create_revised_uat_document)
+
+# ── Skill 12: Test Plan Creation ──────────────────────────────────────────────
+mcp.tool()(create_test_plan)
+
+# ── Skill 13: Test Suite Creation — full sprint ───────────────────────────────
+mcp.tool()(create_test_suites_for_sprint)
+
+# ── Skill 14: Test Suite Creation — single PBI ───────────────────────────────
+mcp.tool()(create_test_suite_for_pbi)
+
+# ── Skill 15: Read All Test Cases from a Suite ───────────────────────────────
+mcp.tool()(get_test_cases_from_suite)
 
 
 if __name__ == "__main__":
