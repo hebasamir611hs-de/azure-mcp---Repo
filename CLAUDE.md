@@ -50,6 +50,7 @@ not improvise them inline. Invoke the matching skill instead:
 | A quick / smoke / adhoc subset | **`quick-test-cases`** | Phase 1 subset. Output to chat, clearly not full coverage. |
 | Push an approved set to Azure DevOps | **`inject-test-cases`** | Phase 2. **Requires explicit user confirmation** — never auto-invoke. |
 | The client UAT document | **`build-uat-doc`** | Phase 2 deliverable. Cases must already be injected with `UAT` tags. |
+| Build / run automated tests | *(see Automation Layer below)* | Phase 3. `scaffold-automation-framework`, `extract-locators`, `automate-test-case`, `run-automation`. |
 
 Rules:
 - **Always invoke `analyze-pbi` / `quick-test-cases` for generation** rather than
@@ -65,9 +66,11 @@ Rules:
 
 ## Sub-Agents — Your Workers
 
-Two specialized subagents do the heavy lifting under your direction. You stay the
-**router and owner** — you delegate the labor, then review and approve what comes back.
-Delegate via the Agent tool (subagent type in **bold** below).
+Two specialized **QA-reasoning** subagents do the heavy lifting under your direction
+(the two **automation engineers** that build runnable tests live in *Automation Layer
+(Phase 3)* below). You stay the **router and owner** — you delegate the labor, then
+review and approve what comes back. Delegate via the Agent tool (subagent type in
+**bold** below).
 
 | Agent | What it does | Delegate when… |
 |---|---|---|
@@ -198,6 +201,49 @@ On "quick" / "adhoc" / "smoke": invoke the **`quick-test-cases`** skill — a ti
 prioritized set (happy path + top critical negatives + sharpest edges). Stay in Phase 1
 format — output to chat, clearly a subset, not full coverage. Inject (via the
 `inject-test-cases` skill) only if the user explicitly asks.
+
+---
+
+## Automation Layer (Phase 3) — Executable Tests
+
+Phase 1 derives cases, Phase 2 injects them. **Phase 3 turns approved cases into
+runnable automated tests.** The hook already exists in the standards: cases tagged
+`Regression` are *"the automation candidates."* The automation engineers build and run
+the suite from that backlog. You remain the **router and owner** — you delegate, then
+review what comes back.
+
+> **Contract:** all automation structure, stack, locator strategy, wrapper rules, and
+> reporting live in `@.claude/context/automation-standards.md`. The engineers and skills
+> apply it; do not improvise framework decisions inline.
+
+### Automation sub-agents (they write code and run it)
+
+| Agent | What it does | Delegate when… |
+|---|---|---|
+| **`senior-web-automation-eng`** | Builds/extends the **Playwright + Python (pytest)** web framework; POM, wrappers, locator extraction, writes & runs web tests, Allure reports. | The target surface is a **website** (WOQOD/FAHES/Qjet) or the **CMS**. |
+| **`senior-mobile-automation-eng`** | Builds/extends the **Appium + Python (pytest)** mobile framework; Screen-Object model, wrappers, locator extraction, writes & runs app tests, Allure reports. | The target surface is the **mobile app** (iOS/Android). |
+
+### Automation skills router
+
+| When the user wants… | Invoke this skill | Notes |
+|---|---|---|
+| Create/initialize the framework | **`scaffold-automation-framework`** | Generates `./automation/` at project root (web/mobile/both). Git-ignored — not committed here. |
+| Locators for a page/screen | **`extract-locators`** | On-demand, from the live app, into the Page/Screen Object. Never bulk-guessed. |
+| Automate an approved case | **`automate-test-case`** | Approved/signed-off case → runnable pytest test. No case re-judging. |
+| Run the suite + report | **`run-automation`** | pytest → Allure with screenshots + video on failure. |
+
+### Hard boundaries (Phase 3)
+
+- **Framework is NOT in this repo.** It is generated at the **project root** (`./automation/`)
+  and **git-ignored** — this repo is the MCP / QA-orchestration system only.
+- **Surface is per feature** — web → Playwright, app → Appium, chosen from the WOQOD
+  Service ↔ Platform matrix. Cross-surface features get a test in each tree.
+- **Automation never re-judges coverage.** The engineers consume *approved* cases; if
+  coverage looks wrong, they flag it back to you — they do not invent or rewrite cases.
+- **Azure integration is DEFERRED.** Until you explicitly enable it, the suite is
+  standalone: backlog comes from the approved set (not the `Regression` query yet), and
+  nothing is posted back to Azure. Wiring to `Regression` + result post-back is the final
+  step, on the user's say-so.
 
 ## Process Improvement
 
