@@ -112,7 +112,7 @@ Every test case must have all of these fields. No exceptions.
 | **impact_area** | `UI` / `Backend` / `Both` |
 | **priority** | `1` (Critical) / `2` (High) / `3` (Medium) / `4` (Low) |
 | **execution_type** | `Manual` / `Automated` |
-| **Tags** | ≥1 keyword. Service + Platform + Category + Lifecycle (`UAT`/`Regression`/`Smoke`/`Sanity`) + optional business keyword. Full taxonomy in `woqod-standards.md`. |
+| **Tags** | Your full tag decision (≥1 keyword): Lifecycle (`UAT`/`Regression`) + Service + Platform (`IOS`/`Android`/`Web`/`Control_Panel`) + Category + optional business keyword. Full taxonomy in `woqod-standards.md`. The MCP adds only `Ai_MCP_Injected`. |
 
 ---
 
@@ -127,15 +127,20 @@ Every test case must have all of these fields. No exceptions.
 - **Specific expected results.** Never write "works correctly", "displays properly",
   or "as expected". Write exactly what the user sees, what value is stored, what
   message appears.
-- **Tag every case.** Every test case carries a `Tags` value (≥1 keyword). Combine
-  axes — Service + Platform + Category + any Lifecycle tag + optional business keyword.
-  Do **not** repeat the auto dimensions (`test_type`, `scenario`, `impact_area`,
-  language) — the MCP adds those. See the Tag Taxonomy in `woqod-standards.md`.
-- **`UAT` tag.** Tag every client-facing acceptance case `UAT` — happy-path flows and
-  key business scenarios in plain language. (Goes to the client doc.)
-- **`Regression` tag.** Tag every automation-bound case `Regression` — the automation
-  suite is built from `Tag = Regression`. Most core happy-path and critical-negative
-  cases carry **both** `UAT` and `Regression`; they are separate but overlapping.
+- **Tag every case.** Every test case carries a `Tags` value (≥1 keyword) — your full
+  decision across the axes: Lifecycle + Service + Platform + Category + optional business
+  keyword. The MCP adds only the `Ai_MCP_Injected` provenance tag; do **not** include it.
+  See the Tag Taxonomy in `woqod-standards.md`.
+- **`UAT` tag.** Tag only the **direct, primary** acceptance scenarios `UAT` — the main
+  success journeys and key business rules in plain language, for the client doc. **Not
+  every case is a UAT case.**
+- **`Regression` tag.** Tag only the feature's **MAIN functional scenarios** `Regression`
+  — the primary happy path and the critical headline negatives. `Regression` **is** the
+  automated set (there is **no separate `Automated` tag**). **Do not** tag deep
+  field-validations, boundary, edge, or minor UI cases `Regression`; they stay in the
+  full set without it. Use your understanding of the feature to pick the *handful* of
+  main scenarios — a large feature yields a **focused** regression subset, not most of
+  the cases.
 - **Priority rules.** Follow the project's priority rubric in `woqod-standards.md`
   (e.g. money/payment flows are highest priority where the project handles real value).
 - **Languages.** Cover the project's default languages (see `woqod-standards.md` →

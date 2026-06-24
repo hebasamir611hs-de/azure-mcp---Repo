@@ -25,7 +25,7 @@
 | **impact_area** | MCP injection area — see mapping below | `Backend` |
 | **priority** | `1`–`4` or `0` for MCP auto-assess | `2` |
 | **execution_type** | `Manual` / `Automated` (blank = MCP auto-determines) | `Automated` |
-| **Tags** | ≥1 project-layer keyword. Combine axes: Service + Platform + Category + Lifecycle (`UAT` / `Regression` / `Smoke` / `Sanity`) + optional business keyword. Service/Platform/business values come from `woqod-standards.md`. **Maps to Azure `System.Tags` at injection — queryable.** | `["Functional-Low", "Regression"]` *(+ Service & Platform tags from woqod-standards.md)* |
+| **Tags** | The agent's full tag decision (≥1 keyword). Combine axes: Lifecycle (`UAT` / `Regression`) + Service + Platform (`IOS` / `Android` / `Web` / `Control_Panel`) + Category + optional business keyword. All values per `woqod-standards.md` → Tag Taxonomy. The MCP adds only `Ai_MCP_Injected` and injects the rest verbatim. **Maps to Azure `System.Tags` — queryable.** | `["Functional-High", "Regression", "FAHES", "Web"]` |
 
 ---
 
@@ -52,9 +52,12 @@
 
 | Platform | Azure `impact_area` |
 |---|---|
-| iOS, Android, Web (UI-facing only) | `UI` |
-| CMS, API, backend-only | `Backend` |
+| IOS, Android, Web (UI-facing only) | `UI` |
+| Control_Panel, API, backend-only | `Backend` |
 | Both UI and backend touched | `Both` |
+
+> `impact_area` is a case **attribute/field** (it feeds validation), **not** a tag —
+> the Platform *tag* itself is one of `IOS`/`Android`/`Web`/`Control_Panel`.
 
 ---
 
@@ -132,15 +135,19 @@ automation suite (`Tag = Regression`) and the client doc (`Tag = UAT`) are later
 **Rules:**
 - Every case carries **≥1 tag**. In practice: Service + Platform + Category, plus any
   Lifecycle tag that applies.
-- **`UAT`** → client-facing acceptance case (Drafter / client doc).
-- **`Regression`** → automation candidate. The automation suite is `Tag = Regression`.
-  Never leave an automation-bound case untagged.
-- `UAT` and `Regression` are **separate but overlapping** — most core happy-path and
-  critical-negative cases carry **both**.
-- Do **not** repeat the auto dimension tags (`test_type`, `scenario`, `execution_type`,
-  `impact_area`, `EN`/`AR`, `Automated-By-AI`) — the MCP adds those itself and dedupes.
+- **`UAT`** → a **direct, primary** acceptance scenario for the client doc (Drafter).
+  Not every case is a UAT case.
+- **`Regression`** → a **MAIN functional scenario** that should be automated. This *is*
+  the automated set — there is **no separate `Automated` tag**. Tag only the feature's
+  main scenarios `Regression`; **do not** tag deep field-validation, boundary, or edge
+  cases. The automation suite is `Tag = Regression` and must stay a focused subset.
+- `UAT` and `Regression` overlap on main happy paths but are decided independently.
+- The MCP adds exactly one tag of its own — **`Ai_MCP_Injected`** (provenance) — and
+  dedupes. Do **not** include it in your `Tags`. The MCP performs **no** tag judgement;
+  it injects the agent's decided tags verbatim. (`test_type`, `scenario`,
+  `execution_type`, `impact_area`, `EN`/`AR` are case attributes, **not** tags.)
 
-> Full taxonomy (all five axes + the exact keyword lists) lives in
+> Full taxonomy (all axes + the exact keyword lists) lives in
 > `@.claude/context/woqod-standards.md` → Tag Taxonomy.
 
 ---
@@ -162,7 +169,7 @@ injection after the QA Manager signs off.
 
 | Field | Value |
 |---|---|
-| **ID** | `SETTINGS-TIMEOUT-TC-036` |
+| **ID** | `CMS-TIMEOUT-TC-036` |
 | **Title** | `Verify that the Session Timeout field rejects a value of zero` |
 | **Category** | `Functional-Low` |
 | **Description** | `Session Timeout is currently set to 30 minutes (default). Verifies that entering 0 is rejected with a validation error and the saved value is not changed.` |
@@ -172,12 +179,14 @@ injection after the QA Manager signs off.
 | **scenario** | `negative` |
 | **impact_area** | `Backend` |
 | **priority** | `2` |
-| **execution_type** | `Automated` |
-| **Tags** | `["Functional-Low", "Regression"]` *(+ Service & Platform tags from woqod-standards.md)* |
+| **execution_type** | `Manual` |
+| **Tags** | `["Functional-Low", "CMS", "Control_Panel"]` |
 
-> This case is `Regression` (automation candidate) but not `UAT` — a field-level
-> negative validation isn't a client sign-off scenario. A happy-path acceptance flow
-> would carry **both** `UAT` and `Regression`.
+> This is a **deep field-validation** case, so it is **neither** `Regression` **nor**
+> `UAT` — exhaustive field checks are not main automation scenarios and are not client
+> sign-off scenarios. It still ships in the full set, just without those lifecycle tags.
+> The feature's **main** happy-path flow (e.g. "save a valid Session Timeout and confirm
+> it takes effect") is what would carry `Regression` — and usually `UAT` too.
 
 ---
 
@@ -186,4 +195,4 @@ injection after the QA Manager signs off.
 - The **full test set** (all 8 categories, all polarities) lives in Azure DevOps linked under the PBI.
 - The **client UAT document** is a filtered subset — `Tag = UAT` cases only — produced by the Drafter. It is a separate deliverable.
 - The **automation suite** is the `Tag = Regression` subset.
-- Azure tags on each injected case = the auto dimensions (`Automated-By-AI; test_type; scenario; execution_type; impact_area; EN`/`AR`) **plus** the project-layer `Tags` you supplied (Service, Platform, Category, Lifecycle, business keyword — see `woqod-standards.md`).
+- Azure tags on each injected case = **`Ai_MCP_Injected`** (the single MCP-applied provenance tag) **plus** the project-layer `Tags` the agent decided (Lifecycle, Service, Platform, Category, optional business keyword — see `woqod-standards.md`). The MCP adds nothing else and injects the agent's tags verbatim.

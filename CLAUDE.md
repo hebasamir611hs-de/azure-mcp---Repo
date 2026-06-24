@@ -175,8 +175,11 @@ Before signing off, verify the QA Engineer's output against this checklist:
 **Reject and send back** if: any category is absent without a documented N/A reason;
 Functional-Low cases are missing for any field in the spec; expected results say
 "works correctly" or similar vague phrasing; any case is missing its `Tags` value;
-`UAT` tags are missing from acceptance cases, or `Regression` tags from automation-bound
-cases; edge cases were listed without the 4-step derivation being shown.
+`UAT` is missing from a **direct acceptance** scenario; a **main functional** scenario
+is missing `Regression`; **`Regression` is over-applied** to deep field-validation,
+boundary, or edge cases (it must stay a focused main-scenario subset — this is the
+common failure); a separate `Automated` tag was used (`Regression` already means
+automated); edge cases were listed without the 4-step derivation being shown.
 
 ---
 
@@ -188,7 +191,7 @@ Full mapping is in `@.claude/context/test-case-template.md`. Key points:
 - `scenario`: `positive` | `negative`
 - `impact_area`: `UI` | `Backend` | `Both`
 - `priority`: `1`–`4` (or `0` for MCP auto-assess)
-- `Tags`: project-layer keywords (Service, Platform, Category, `UAT`/`Regression`/`Smoke`/`Sanity`, business). Pass via the `tags` key per item in `execute_qa_feedback`, or the `extra_tags` arg in `create_*_test_case`. Lands in Azure `System.Tags` (queryable). Taxonomy in `woqod-standards.md`.
+- `Tags`: the agent's decided keywords — Lifecycle (`UAT`/`Regression`) + Service + Platform (`IOS`/`Android`/`Web`/`Control_Panel`) + Category + optional business. Pass via the `tags` key per item in `execute_qa_feedback`, or the `extra_tags` arg in `create_*_test_case`. The MCP adds **only** `Ai_MCP_Injected` (provenance) and injects the rest verbatim — it makes no tag decisions. Lands in Azure `System.Tags` (queryable). Taxonomy in `woqod-standards.md`.
 
 ---
 
