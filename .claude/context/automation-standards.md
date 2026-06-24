@@ -65,15 +65,32 @@ automation/
 │     ├─ waits.py             # explicit-wait helpers
 │     └─ logger.py
 ├─ web/
-│  ├─ pages/                  # Page Objects — one class per page/component
-│  └─ tests/                  # pytest tests — one module per feature
-├─ mobile/
-│  ├─ screens/                # Screen Objects — one class per screen
+│  ├─ pages/
+│  │  └─ <feature>/           # ONE FOLDER PER FEATURE (e.g. contact_us/) with __init__.py
+│  │     └─ <page>_page.py    # Page Objects — one class per page/component
 │  └─ tests/
+│     └─ <feature>/           # ONE FOLDER PER FEATURE (e.g. contact_us/) with __init__.py
+│        ├─ test_<area>.py    # group related cases by sub-area/story — many tests per module
+│        └─ test_<area>.py
+├─ mobile/
+│  ├─ screens/
+│  │  └─ <feature>/           # one folder per feature; one class per screen
+│  └─ tests/
+│     └─ <feature>/           # one folder per feature, modules grouped by sub-area
 └─ reports/                   # generated allure-results / allure-report (git-ignored)
 ```
 
 Rules:
+- **Organize by feature, then sub-area.** Both `pages/`/`screens/` and `tests/` are
+  split into **one folder per feature** (e.g. `contact_us/`), each with an `__init__.py`.
+  Page/Screen Objects for that feature live in its `pages/<feature>/` (or
+  `screens/<feature>/`) folder; tests live in `tests/<feature>/`.
+- **Group tests by sub-area, never one file per test case.** Inside a feature's test
+  folder, group related cases into a module by sub-area/story
+  (`test_submission.py`, `test_validation.py`, `test_attachments.py`, …) with **many
+  test functions per module**. pytest runs test *functions*, not files — a file per
+  case just fragments the suite. (Markers + the per-test traceability ID still map each
+  function back to its Azure case.)
 - **`core/` is generic.** Nothing in `core/` references WOQOD, a specific page, or a
   specific feature. Feature knowledge lives only in `pages/`, `screens/`, and `tests/`.
 - **Tests never touch raw Playwright/Appium.** A test calls Page/Screen-Object methods,
@@ -168,19 +185,20 @@ Locator hygiene:
 - Every test carries the QA **traceability ID** in a marker/docstring
   (`# TAG-TOPUP-TC-014`) so an automated test maps back to its source case.
 
-### pytest markers ↔ QA lifecycle tags
+### pytest markers ↔ QA tags
 
-Markers mirror the Azure lifecycle tags (`woqod-standards.md`) so the suite slices the
-same way the test cases do:
+Markers **mirror the Azure tags 1:1** (`woqod-standards.md`) so the suite slices the
+same way the test cases do. A marker **never introduces a tag key that isn't in the
+taxonomy** — it reuses the Lifecycle and Platform axis values exactly.
 
 | Marker | Mirrors tag | Meaning |
 |---|---|---|
-| `@pytest.mark.regression` | `Regression` | Core automated suite — the default automation backlog. |
-| `@pytest.mark.smoke` | `Smoke` | Minimal critical path (login → top-up → fuel). |
-| `@pytest.mark.sanity` | `Sanity` | Narrow post-fix checks. |
-| `@pytest.mark.web` / `@pytest.mark.mobile` | Platform | Surface selector. |
+| `@pytest.mark.regression` | `Regression` | The automated suite = the feature's MAIN functional scenarios. |
+| `@pytest.mark.web` · `@pytest.mark.ios` · `@pytest.mark.android` · `@pytest.mark.control_panel` | Platform (`Web` / `IOS` / `Android` / `Control_Panel`) | Surface selector — mirrors the Platform axis exactly. |
 
-Register every marker in `pytest.ini` (no unknown-marker warnings).
+There is **no `automated` marker** (`regression` already *is* the automated set) and no
+`smoke`/`sanity` markers (those lifecycle tags were removed). Register every marker in
+`pytest.ini` (no unknown-marker warnings).
 
 ---
 
