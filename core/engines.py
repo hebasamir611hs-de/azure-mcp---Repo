@@ -42,7 +42,7 @@ def add_full_test_case(parent_id: int, title: str, steps_list: list,
             JsonPatchOperation(op="add", path="/fields/Microsoft.VSTS.TCM.Steps", value=xml_steps),
             JsonPatchOperation(op="add", path="/fields/Microsoft.VSTS.Common.Priority", value=priority),
             JsonPatchOperation(op="add", path="/relations/-", value={
-                "rel": "System.LinkTypes.Hierarchy-Reverse",
+                "rel": "Microsoft.VSTS.Common.TestedBy-Reverse",
                 "url": f"{os.getenv('AZURE_ORG_URL')}/_apis/wit/workItems/{parent_id}"
             })
         ]
@@ -68,11 +68,18 @@ def _create_test_case(
     execution_type: str,
     impact_area: str,
     language: str,
-    skill_name: str
+    skill_name: str,
+    extra_tags: list = None
 ) -> dict:
     """
     Internal pipeline shared by create_arabic_test_case and create_english_test_case.
     Validates, auto-assesses missing attributes, and creates the work item.
+
+    extra_tags: the agent's full tag decision (Lifecycle + Service + Platform +
+    Category + optional business keyword, per woqod-standards.md) merged into
+    System.Tags alongside the single MCP provenance tag (Ai_MCP_Injected).
+    Injected verbatim — the MCP makes no tag decisions. Blank/duplicate entries
+    are ignored.
     """
     try:
         is_valid, error_msg = validate_tc_attributes(
@@ -97,8 +104,22 @@ def _create_test_case(
             execution_type = determine_execution_type(test_type, impact_area)
 
         xml_steps = format_azure_steps(steps_list, expected_list)
-        lang_tag = language.upper()
-        tags = f"Automated-By-AI; {test_type}; {scenario}; {execution_type}; {impact_area}; {lang_tag}"
+        # Unified tagging model: the MCP is a dumb transport. It applies exactly
+        # ONE provenance tag (Ai_MCP_Injected) and passes through every tag the
+        # agent decided (extra_tags) verbatim. All tag *judgement* — lifecycle,
+        # service, platform, category, business — lives in the instruction files
+        # and is the agent's call, never the MCP's. (See woqod-standards.md → Tag
+        # Taxonomy.) test_type/scenario/execution_type/impact_area/language stay
+        # as validated attributes but are no longer emitted as tags.
+        tag_parts = ["Ai_MCP_Injected"]
+        if extra_tags:
+            seen = {t.lower() for t in tag_parts}
+            for t in extra_tags:
+                t = (t or "").strip()
+                if t and t.lower() not in seen:
+                    tag_parts.append(t)
+                    seen.add(t.lower())
+        tags = "; ".join(tag_parts)
 
         patch_doc = [
             JsonPatchOperation(op="add", path="/fields/System.Title", value=title),
@@ -108,7 +129,7 @@ def _create_test_case(
             JsonPatchOperation(op="add", path="/fields/System.Tags", value=tags),
             JsonPatchOperation(op="add", path="/fields/System.IterationPath", value=parent_iteration),
             JsonPatchOperation(op="add", path="/relations/-", value={
-                "rel": "System.LinkTypes.Hierarchy-Reverse",
+                "rel": "Microsoft.VSTS.Common.TestedBy-Reverse",
                 "url": f"{os.getenv('AZURE_ORG_URL')}/_apis/wit/workItems/{parent_id}"
             })
         ]
@@ -160,7 +181,8 @@ def create_arabic_test_case(
     scenario: str = "positive",
     priority: int = 2,
     execution_type: str = "",
-    impact_area: str = "UI"
+    impact_area: str = "UI",
+    extra_tags: list = None
 ) -> dict:
     """
     SKILL 3: Comprehensive TC Engine (Arabic)
@@ -179,6 +201,9 @@ def create_arabic_test_case(
         priority (int): 1=Critical, 2=High, 3=Medium, 4=Low (auto-assessed if 0)
         execution_type (str): 'Automated' | 'Manual' (auto-determined if empty)
         impact_area (str): 'UI' | 'Backend' | 'Both' (default: 'UI')
+        extra_tags (list[str]): The agent's decided tags (e.g. ['UAT', 'Regression',
+            'FAHES', 'Web', 'Functional-High']) merged verbatim into System.Tags as
+            queryable Azure tags, alongside the MCP's Ai_MCP_Injected provenance tag.
 
     Returns:
         {status, tags_applied, test_case_id, parent_id, title, description,
@@ -189,7 +214,8 @@ def create_arabic_test_case(
         steps_list=steps_list, expected_list=expected_list,
         test_type=test_type, scenario=scenario, priority=priority,
         execution_type=execution_type, impact_area=impact_area,
-        language="ar", skill_name="create_arabic_test_case"
+        language="ar", skill_name="create_arabic_test_case",
+        extra_tags=extra_tags
     )
 
 
@@ -207,7 +233,8 @@ def create_english_test_case(
     scenario: str = "positive",
     priority: int = 2,
     execution_type: str = "",
-    impact_area: str = "UI"
+    impact_area: str = "UI",
+    extra_tags: list = None
 ) -> dict:
     """
     SKILL 4: Comprehensive TC Engine (English)
@@ -226,6 +253,9 @@ def create_english_test_case(
         priority (int): 1=Critical, 2=High, 3=Medium, 4=Low (auto-assessed if 0)
         execution_type (str): 'Automated' | 'Manual' (auto-determined if empty)
         impact_area (str): 'UI' | 'Backend' | 'Both' (default: 'UI')
+        extra_tags (list[str]): The agent's decided tags (e.g. ['UAT', 'Regression',
+            'FAHES', 'Web', 'Functional-High']) merged verbatim into System.Tags as
+            queryable Azure tags, alongside the MCP's Ai_MCP_Injected provenance tag.
 
     Returns:
         {status, tags_applied, test_case_id, parent_id, title, description,
@@ -236,7 +266,8 @@ def create_english_test_case(
         steps_list=steps_list, expected_list=expected_list,
         test_type=test_type, scenario=scenario, priority=priority,
         execution_type=execution_type, impact_area=impact_area,
-        language="en", skill_name="create_english_test_case"
+        language="en", skill_name="create_english_test_case",
+        extra_tags=extra_tags
     )
 
 
@@ -261,7 +292,10 @@ def execute_qa_feedback(parent_id: int, language: str, feedback_items: list) -> 
         language (str): 'ar' | 'en' — determines title prefix validation
         feedback_items (list[dict]): Each item:
             {comment, title, description, steps_list, expected_list,
-             test_type, scenario, priority, execution_type, impact_area}
+             test_type, scenario, priority, execution_type, impact_area, tags}
+            tags (list[str], optional): the agent's decided tags (e.g. ['UAT',
+            'Regression', 'FAHES', 'Web', 'Functional-High']) merged verbatim
+            into System.Tags alongside the MCP's Ai_MCP_Injected provenance tag.
 
     Returns:
         {parent_id, total_feedback_items, created, errors_count,
@@ -296,6 +330,7 @@ def execute_qa_feedback(parent_id: int, language: str, feedback_items: list) -> 
             priority = item.get("priority", 0)
             execution_type = item.get("execution_type", "")
             impact_area = item.get("impact_area", "UI")
+            extra_tags = item.get("tags", []) or []
 
             is_valid, error_msg = validate_tc_attributes(
                 title, steps_list, expected_list, test_type, scenario,
@@ -314,7 +349,17 @@ def execute_qa_feedback(parent_id: int, language: str, feedback_items: list) -> 
 
             try:
                 xml_steps = format_azure_steps(steps_list, expected_list)
-                tags = f"Automated-By-AI; {test_type}; {scenario}; {execution_type}; {impact_area}; {language.upper()}"
+                # Unified tagging model: MCP applies only the Ai_MCP_Injected
+                # provenance tag; every other tag is the agent's decision, passed
+                # through verbatim. No tag judgement happens here.
+                tag_parts = ["Ai_MCP_Injected"]
+                seen = {t.lower() for t in tag_parts}
+                for t in extra_tags:
+                    t = (t or "").strip()
+                    if t and t.lower() not in seen:
+                        tag_parts.append(t)
+                        seen.add(t.lower())
+                tags = "; ".join(tag_parts)
 
                 patch_doc = [
                     JsonPatchOperation(op="add", path="/fields/System.Title", value=title),
@@ -324,7 +369,7 @@ def execute_qa_feedback(parent_id: int, language: str, feedback_items: list) -> 
                     JsonPatchOperation(op="add", path="/fields/System.Tags", value=tags),
                     JsonPatchOperation(op="add", path="/fields/System.IterationPath", value=parent_iteration),
                     JsonPatchOperation(op="add", path="/relations/-", value={
-                        "rel": "System.LinkTypes.Hierarchy-Reverse",
+                        "rel": "Microsoft.VSTS.Common.TestedBy-Reverse",
                         "url": f"{os.getenv('AZURE_ORG_URL')}/_apis/wit/workItems/{parent_id}"
                     })
                 ]
@@ -339,7 +384,8 @@ def execute_qa_feedback(parent_id: int, language: str, feedback_items: list) -> 
                     "priority": priority,
                     "execution_type": execution_type,
                     "impact_area": impact_area,
-                    "language": language
+                    "language": language,
+                    "tags": tags.split("; ")
                 })
             except Exception as e:
                 errors.append({"index": i, "comment": comment, "error": str(e)})
