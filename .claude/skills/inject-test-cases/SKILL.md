@@ -22,8 +22,9 @@ and signed off via `analyze-pbi` (or `quick-test-cases`), stop and do that first
    If anything is unapproved, return to `analyze-pbi`.
 3. **Map fields** per `@.claude/context/test-case-template.md` — `test_type`,
    `scenario`, `impact_area`, `priority`, `execution_type`, and `Tags`
-   (passed via the `tags` key per item). Do not duplicate the auto dimension tags;
-   the MCP adds and dedupes those.
+   (passed via the `tags` key per item). The MCP performs **no** tag judgement — it
+   injects the agent's decided tags verbatim and adds only the `Ai_MCP_Injected`
+   provenance tag (do not include that one yourself); it dedupes.
 4. **Inject the batch** — prefer `mcp__azure-devops__execute_qa_feedback` for the full
    approved set in one call. Use `mcp__azure-devops__create_english_test_case` /
    `mcp__azure-devops__create_arabic_test_case` only for individual cases or fallback.

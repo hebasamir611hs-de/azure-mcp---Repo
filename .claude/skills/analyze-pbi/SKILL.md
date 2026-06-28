@@ -31,8 +31,9 @@ in chat. This is reasoning work — **no injection happens here.**
    beyond), runs the **4-step edge methodology explicitly** (objects → statuses →
    relations → derivation) showing that reasoning, and formats every case per
    `@.claude/context/test-case-template.md` — all required fields, including `Tags`
-   (Service + Platform + Category + Lifecycle; `UAT` on client-facing acceptance
-   cases, `Regression` on automation candidates — values from
+   (Lifecycle + Service + Platform + Category; `UAT` only on **direct acceptance**
+   scenarios, `Regression` only on the feature's **MAIN functional** scenarios — never
+   on deep field/boundary/edge cases — values from
    `@.claude/context/woqod-standards.md`). The agent is reasoning-only; it never
    calls the MCP. *(Fallback: if the agent is unavailable, derive inline applying
    the exact same framework, methodology, and format.)*

@@ -9,6 +9,12 @@
       "env": {
         "PYTHONUNBUFFERED": "1"
       }
-    }
+    },
+
+    "playwright": {
+      "command": "npx",
+      "args": ["@playwright/mcp@latest"]
+    }  
+    
   }
 }
