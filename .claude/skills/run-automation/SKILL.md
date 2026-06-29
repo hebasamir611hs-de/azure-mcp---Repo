@@ -1,6 +1,6 @@
 ---
 name: run-automation
-description: Run the pytest automation suite in ./automation/ and produce the readable Allure report with screenshots + video/screen-recording attached on failure. Supports running everything, a marker subset (smoke / sanity / regression / web / mobile), or a single test, then summarizes pass/fail and gives the report path. Use when the user wants to execute the automated tests, run a smoke/regression pass, or regenerate the report. Read-only on the test code — it executes and reports; it does NOT write tests (use automate-test-case) and makes no Azure DevOps calls (integration deferred).
+description: Run the pytest automation suite in ./automation/ and produce the readable Allure report with screenshots + video/screen-recording attached on failure. Supports running everything, a marker subset (regression / web / ios / android / control_panel), or a single test, then summarizes pass/fail and gives the report path. Use when the user wants to execute the automated tests, run a regression pass, or regenerate the report. Read-only on the test code — it executes and reports; it does NOT write tests (use automate-test-case) and makes no Azure DevOps calls (integration deferred).
 ---
 
 # Run Automation — Execute the Suite + Allure Report
@@ -10,8 +10,8 @@ screenshots and video/screen-recording attached on failure. This skill runs and 
 it does not author tests.
 
 **Argument:** the selection → `$ARGUMENTS`
-(`all` | a marker like `smoke` / `sanity` / `regression` / `web` / `mobile` | a single
-test path/ID). Default to `smoke` if nothing is given, and say so.
+(`all` | a marker like `regression` / `web` / `ios` / `android` / `control_panel` |
+a single test path/ID). Default to `regression` if nothing is given, and say so.
 
 > Reporting conventions (Allure, screenshot-on-failure, video/trace retain-on-failure,
 > severity from QA priority) live in `@.claude/context/automation-standards.md`.

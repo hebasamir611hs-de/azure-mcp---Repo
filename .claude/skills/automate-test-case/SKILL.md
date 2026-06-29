@@ -35,18 +35,13 @@ chat set). If no approved case is in hand, stop — route to `analyze-pbi` /
      queries; no asserts, no `sleep`, no test data inside.
    - **Test** — AAA shape, concrete data **mirrored from the case** (e.g. `Top-up = 50
      QAR`), assertions in the test, wrapped meaningful steps in `allure.step(...)`.
-   - **Tag it** — markers per the case's lifecycle tags (`regression` / `smoke` /
-     `sanity` + `web`/`mobile`) and the QA **traceability ID** in a marker/docstring
+   - **Tag it** — markers mirror the Azure tags 1:1: `regression` (main functional
+     scenarios) + the Platform marker (`web` / `ios` / `android` / `control_panel`).
+     No `smoke`/`sanity`/`automated`/`mobile` markers exist — they were removed per
+     `automation-standards.md`. Add the QA **traceability ID** in a marker/docstring
      (e.g. `# TAG-TOPUP-TC-014`).
 6. **Validate against the Definition of Done** — no raw driver in the test, locators from
    `extract-locators`, independent/idempotent, Allure title + severity (from QA priority).
    Run the single test (or its marker) and confirm green on a clean state; for mobile
    without a device, statically validate and state that execution is pending the
-   environment — never claim an unobserved pass.
-7. **Report** — files added/changed, the marker(s) and traceability ID applied, and the
-   run result (or why it couldn't run yet). For full-suite runs, use `run-automation`.
-
-## Hard boundary
-Automates approved cases only. **Never** invents, edits, or re-prioritizes a test case;
-if coverage looks wrong, flag it to the QA Manager. No Azure DevOps calls — the backlog
-comes from the approved set until integration is explicitly enabled.
+   environment — nev

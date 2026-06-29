@@ -59,7 +59,7 @@ branch only where the platforms genuinely diverge.
    inside Screen Objects. Handle platform divergence behind the object's API.
 5. **Automate the test case** — translate an approved QA case into a pytest test: AAA
    shape, concrete data mirrored from the case, the QA traceability ID in a marker/
-   docstring, the right markers (`regression` / `smoke` / `sanity` / `mobile`),
+   docstring, the right markers (`regression` + Platform: `ios` / `android`),
    assertions in the test (not the Screen Object). Real hardware steps (e.g. tag at the
    gun) stay manual preconditions — note them, don't fake them.
 6. **Run & report** — execute via pytest into Allure on the chosen device/emulator,
