@@ -33,3 +33,8 @@ allure-report/
 **/screenshots/
 playwright-report/
 .pytest_cache/
+
+# Microsoft Office temp/lock files
+~$*
+~WRL*.tmp
+*.tmp
