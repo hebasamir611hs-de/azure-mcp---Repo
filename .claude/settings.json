@@ -4,7 +4,11 @@
       "Bash(python -m venv venv)",
       "Bash(./venv/Scripts/python.exe -m pip install --upgrade pip -q)",
       "Bash(./venv/Scripts/python.exe -m pip install -r requirements.txt)",
-      "Bash(./venv/Scripts/python.exe -m pytest -m web -v)"
+      "Bash(./venv/Scripts/python.exe -m pytest -m web -v)",
+      "mcp__playwright__browser_resize",
+      "Bash(mkdir -p \"C:/Users/MAHMOU~1/AppData/Local/Temp/claude/d--Ai-AzureMCP/2ff10bb0-2735-4b12-b1e1-a1e12c6d2551/scratchpad/contact_us_shots\")",
+      "mcp__playwright__browser_take_screenshot",
+      "Bash(cd \"d:/Ai/AzureMCP\" && rm -f outputs/Contact_Us_User_Manual_v1.0.docx 2>&1 && echo \"removed\" || echo \"rm failed\"; ls -la outputs/ 2>&1)"
     ],
     "additionalDirectories": [
       "D:\\Ai\\2_WoqodAutomatioTest\\config",
