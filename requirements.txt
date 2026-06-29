@@ -1,0 +1,22 @@
+# QA-Final-V4 — Azure DevOps QA MCP Server
+# Direct dependencies, pinned to the versions in the working .venv (Python 3.14).
+# Rebuild on any machine:
+#   python -m venv .venv
+#   .venv\Scripts\python.exe -m pip install -r requirements.txt
+# pip resolves transitive deps (anyio, httpx, oauthlib, cryptography, etc.).
+
+# --- Azure DevOps API ---
+azure-devops==7.1.0b4
+azure-core==1.41.0
+msrest==0.7.1
+
+# --- MCP runtime ---
+mcp==1.28.0
+
+# --- Config / SSL ---
+python-dotenv==1.2.2
+truststore==0.10.4
+
+# --- HTTP + docs ---
+requests==2.34.2
+python-docx==1.2.0
