@@ -44,8 +44,22 @@ in chat. This is reasoning work — **no injection happens here.**
    for another pass** (via SendMessage to the same agent, with the specific gaps) any
    category that is absent without a documented N/A, any field missing Functional-Low
    cases, any vague expected result, or any case missing its `Tags`.
-7. **Sign off** — publish a short QA sign-off: categories covered, total TC count,
-   open risks or assumptions.
+7. **Detect automation surface** — switch hat to **Development Manager** for one
+   moment. Scan the Platform tags across the approved set and classify the project
+   surface:
+   - `Web` only → web automation path (Playwright)
+   - `IOS` / `Android` (one or both) → mobile automation path (Appium)
+   - Both Web + Mobile → cross-surface, two automation trees
+   - `Control_Panel` only → web automation path (CMS surface)
+   - **Unclear** — Platform tags inconsistent or missing → flag for explicit question
+     at the Phase 2→3 boundary (`route-automation` will ask).
+   State the detected surface in the sign-off below. This drives the automation
+   handoff later.
+8. **Sign off** — publish a short QA sign-off: categories covered, total TC count,
+   **detected automation surface** (from step 7), open risks or assumptions. If
+   surface is clear and the user has not yet injected, offer the lookahead:
+   *"Surface is `{surface}` — want me to prep the automation environment in parallel
+   while you review? (runs `prep-automation-env`)"*
 
 ## Hard boundary
 

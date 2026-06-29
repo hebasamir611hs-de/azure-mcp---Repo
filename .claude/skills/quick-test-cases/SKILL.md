@@ -29,7 +29,14 @@ coverage. Use for smoke / ad-hoc / "give me the critical ones" requests.
      reasoning briefly).
 3. **Format** each case per `@.claude/context/test-case-template.md`, including `Tags`.
    Money flows are always P1.
-4. **Output to chat** — and **state clearly that this is a subset, not full coverage.**
+4. **Detect automation surface (lightweight)** — quick scan of the Platform tags on
+   the produced subset. Classify as `Web` / `Mobile (IOS/Android)` / `Both` /
+   `Control_Panel` / `Unclear`. This is informational only here (no env prep is
+   triggered from a quick subset — the full run via `analyze-pbi` is the right place
+   for that), but it tells the user which automation MCP would apply later.
+5. **Output to chat** — and **state clearly that this is a subset, not full coverage.**
+   Include the detected surface in the closing note (e.g., *"Subset surface: Android
+   — full coverage via analyze-pbi will confirm."*).
 
 ## Hard boundary
 
