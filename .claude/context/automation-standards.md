@@ -193,12 +193,28 @@ taxonomy** — it reuses the Lifecycle and Platform axis values exactly.
 
 | Marker | Mirrors tag | Meaning |
 |---|---|---|
-| `@pytest.mark.regression` | `Regression` | The automated suite = the feature's MAIN functional scenarios. |
+| `@pytest.mark.regression` | `Regression` | The **critical re-run subset** — run on every change. A subset of the automated suite, not all of it. |
 | `@pytest.mark.web` · `@pytest.mark.ios` · `@pytest.mark.android` · `@pytest.mark.control_panel` | Platform (`Web` / `IOS` / `Android` / `Control_Panel`) | Surface selector — mirrors the Platform axis exactly. |
 
-There is **no `automated` marker** (`regression` already *is* the automated set) and no
-`smoke`/`sanity` markers (those lifecycle tags were removed). Register every marker in
-`pytest.ini` (no unknown-marker warnings).
+The **automated suite itself = every case tagged `Automation`** (the broad automatable set
+the Automation engineer classified pre-injection); a `Manual`-tagged case has no test at
+all. So there is **no `automation` / `manual` marker** — every test that exists is by
+definition an `Automation` case, and `Manual` cases are never authored. `regression` marks
+the critical subset *within* the suite. There are no `smoke` / `sanity` markers (those
+tags were removed). Register every marker in `pytest.ini` (no unknown-marker warnings).
+
+---
+
+## Automation classification pass (before injection)
+
+Before the QA Manager injects an approved set, the surface's Automation engineer reviews
+**every** case and assigns the **`Automation` / `Manual`** execution-method tag (Axis 1b
+in `woqod-standards.md`) — exactly one per case, **100% coverage**, never both. **Bias
+toward `Automation`:** tag `Manual` only for cases that genuinely can't be automated
+(physical/hardware steps, purely visual checks, CAPTCHA, human judgement). Align each
+case's `execution_type` to match. The automation build then sources **every
+`Automation`-tagged case**, not just `Regression`. This pass is pure judgement — no
+framework code is written and the case content is never rewritten.
 
 ---
 
@@ -250,15 +266,17 @@ A test is done only when ALL hold:
 
 ---
 
-## Azure DevOps integration — DEFERRED
+## Azure DevOps integration — READ enabled · post-back DEFERRED
 
-The loop closes later, after the framework is proven standalone. When enabled:
-- **Source the backlog** from Azure cases tagged `Regression` (the existing automation
-  candidates) instead of the chat set.
-- **Post results back** via the MCP audit tools (`get_test_outcome_summary`,
-  `review_test_coverage`).
-Until the user explicitly turns this on, automation runs **standalone** — tests are
-authored from the approved chat/QA set, and nothing reads from or writes to Azure.
+- **READ (enabled).** The automation engineers **source the backlog from Azure**: they
+  read a test suite via `mcp__azure-devops__get_test_cases_from_suite` (`plan_id`,
+  `suite_id`) and build from the cases tagged **`Automation`** (the full automatable set;
+  `Regression` is the critical re-run subset within it). They may still author from the
+  approved chat set when no suite exists yet.
+- **POST-BACK (deferred).** Writing results back to Azure (run outcomes,
+  `get_test_outcome_summary`, `review_test_coverage`) stays **off** until the user
+  explicitly enables it. Until then the engineers **read** cases but **write nothing** to
+  Azure.
 
 ---
 *Living document. Refine as the framework matures — but keep `core/` generic and keep

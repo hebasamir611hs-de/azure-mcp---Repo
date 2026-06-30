@@ -43,7 +43,16 @@ Read `@.claude/context/woqod-background.md` before any feature analysis.
 ## Analysis Framework
 Read and apply `@.claude/context/analysis-framework.md`.
 It defines the full test taxonomy (UI, Compatibility, Auth, Functional-High,
-Functional-Low, API, Edge, conditional) and the mandatory 4-step edge-case methodology.
+Functional-Low, API, Edge, conditional), the 4-step edge-case methodology, and the
+**two analysis modes — Normal (default) and Deep**.
+
+**Analysis mode** — the user names it when submitting the PBI/sprint; **if unspecified,
+default to Normal** (and say so). **Normal** focuses on UI / Functional-High /
+Functional-Low, may include Compatibility / Auth / a lighter Edge pass, and **omits**
+API, the Additional/Conditional category, and all non-functional/security/performance
+cases. **Deep** is the full 8-category framework + complete 4-step edge methodology +
+non-functional coverage where warranted. **Carry the active mode into every analysis
+step, the delegation to the `qa-engineer`, and the review gate.**
 
 ## Test Case Format & Standards
 - Test case attributes, Azure mapping, example: `@.claude/context/test-case-template.md`
@@ -65,12 +74,14 @@ not improvise them inline. Invoke the matching skill instead:
 | The client UAT document | **`build-uat-doc`** | Phase 2 deliverable. Cases must already be injected with `UAT` tags. |
 | Verify automation environment for a surface | **`prep-automation-env`** | Phase 3 gate. Checks MCP + host + framework readiness for `web`/`mobile`/`both`. Auto-scaffolds if missing. iOS on non-macOS = ACTIONABLE. |
 | Route injected cases to automation (hybrid) | **`route-automation`** | Phase 2.5 router. Reads Azure batch, classifies by Platform, runs `prep-automation-env`, waits for approval, delegates engineers. iOS on non-macOS is skipped with explicit warning. |
+| The end-user feature manual | **`create-user-manual`** | Phase 2 deliverable (Drafter). Fixed iHorizons template; **screenshot-gated**. |
 | Build / run automated tests | *(see Automation Layer below)* | Phase 3. `scaffold-automation-framework`, `extract-locators`, `automate-test-case`, `run-automation`. |
 
 Rules:
 - **Always invoke `analyze-pbi` / `quick-test-cases` for generation** rather than
-  reproducing the framework from memory — the skill guarantees all 8 categories, the
-  4-step edge methodology, the template format, and tagging are applied.
+  reproducing the framework from memory — the skill guarantees the right categories
+  **for the active mode**, the edge methodology at the right depth, the template format,
+  and tagging are applied.
 - **`inject-test-cases` is the only writer.** Invoke it *only* after the user has
   reviewed the set and explicitly says to inject. Confirm the parent PBI first.
 - The skills call the MCP tools. **You never call an injection MCP tool directly** —
@@ -89,8 +100,8 @@ review and approve what comes back. Delegate via the Agent tool (subagent type i
 
 | Agent | What it does | Delegate when… |
 |---|---|---|
-| **`qa-engineer`** | Derives the exhaustive test-case set in chat — all 8 categories, the 4-step edge methodology, full template format. Reasoning only; no MCP, no injection. | You have the PBI spec / acceptance criteria in hand and need the full derivation (**Phase 1, step 2**). |
-| **`drafter`** | Turns the approved, signed-off set into shareable `.docx` deliverables — client UAT doc (`UAT`-tagged cases only) and the end-user feature manual. Formats only; never invents or re-judges cases. | Cases are signed off and a client- or end-user-facing document is needed (**Phase 2, step 8**). |
+| **`qa-engineer`** | Derives the test-case set in chat **for the active mode** — Deep (all 8 categories + full 4-step edge methodology) or Normal (UI / Functional-High / Functional-Low focus, lighter Edge, no API / Additional / non-functional), full template format. Reasoning only; no MCP, no injection. | You have the PBI spec / acceptance criteria in hand and need the derivation (**Phase 1, step 2**). |
+| **`drafter`** | Turns the approved, signed-off set into shareable `.docx` deliverables — client UAT doc (`UAT`-tagged cases only) and the end-user feature manual (via the **`create-user-manual`** skill — fixed template, screenshot-gated). Formats only; never invents or re-judges cases. | Cases are signed off and a client- or end-user-facing document is needed (**Phase 2, step 9**). |
 
 Rules of delegation:
 - **You read the PBI; the agent reasons.** In Phase 1 you pull the PBI via
@@ -108,8 +119,8 @@ Rules of delegation:
   and collected in a **test suite**, prefer the **`build-uat-doc`** skill (the MCP reads
   the suite, you filter `Tag = UAT`, the `drafter` formats the `.docx`). If you need a
   client doc straight from the approved *chat* set without going through Azure, delegate
-  to the **`drafter`** directly. The **end-user feature manual** has no skill — it is
-  always the `drafter`'s job.
+  to the **`drafter`** directly. The **end-user feature manual** is the
+  **`create-user-manual`** skill (Drafter-owned, fixed iHorizons template, screenshot-gated).
 
 ---
 
@@ -117,15 +128,18 @@ Rules of delegation:
 
 ### Phase 1: Analysis & Generation (chat only — no injection)
 
-1. **Confirm scope** — if acceptance criteria are missing, ask first; state any
+1. **Confirm scope & mode** — determine the **analysis mode**: use the one the user
+   named when submitting the PBI/sprint; **if none was named, default to Normal** (and
+   state that you are). If acceptance criteria are missing, ask first; state any
    assumptions you fill (surfaces, roles, objects, integration points).
 2. **Invoke the `analyze-pbi` skill** (or **`quick-test-cases`** for an adhoc subset)
-   to run the full procedure: read the PBI, apply the framework across all 8
-   categories, run the 4-step edge methodology, format per the template, and produce
-   ALL test cases to chat. The skill owns the only Phase-1 MCP read call
-   (`get_story_for_analysis`). **Delegate the actual case derivation to the
-   `qa-engineer` subagent** — pass it the PBI spec/AC and let it produce the exhaustive
-   set; you supply scope and stated assumptions. **No injection happens here.**
+   to run the full procedure: read the PBI, apply the framework **for the active mode**
+   (Deep = all 8 categories; Normal = the functional-focused subset, no API / Additional
+   / non-functional), run the edge methodology (full in Deep, lighter in Normal), format
+   per the template, and produce the in-scope test cases to chat. The skill owns the only
+   Phase-1 MCP read call (`get_story_for_analysis`). **Delegate the actual case
+   derivation to the `qa-engineer` subagent — passing it the active mode** along with the
+   PBI spec/AC; you supply scope and stated assumptions. **No injection happens here.**
 3. **Review the output** — check the `qa-engineer`'s output against the coverage
    checklist. Approve only when it passes; send it back to the agent for another pass
    if any category, field, or expected result falls short (see Reviewing Output below).
@@ -137,21 +151,33 @@ Rules of delegation:
 
 ---
 
-### Phase 2: Injection & Deliverables (skills only — zero creative work)
+### Phase 2: Classification, Injection & Deliverables
 
-5. **Confirm the parent PBI ID** — ask if not already provided.
-6. **Invoke the `inject-test-cases` skill** to push the approved batch — only after the
-   user explicitly agrees. The skill owns the field/Tags mapping and the MCP write
-   calls (`execute_qa_feedback` preferred; `create_*_test_case` as fallback). You do
-   not call those MCP tools directly.
-7. **Report back** — how many TCs created, their Azure work item IDs, any errors. The
+5. **Automation classification pass — before any injection.** Delegate the approved set
+   to the Automation engineer(s) by surface (**`senior-web-automation-eng`** for web/CMS,
+   **`senior-mobile-automation-eng`** for the app). Each reviews **every** case in its
+   surface and tags it **`Automation`** (can be automated — bias toward this, not just the
+   `Regression` subset) or **`Manual`** (genuinely non-automatable: physical/hardware
+   steps, purely visual checks, CAPTCHA, human judgement). **Outcome: every case carries
+   exactly one — 100% classified, never both, never neither**; align each case's
+   `execution_type` to match. This is a **judgement-only tagging pass** — no framework
+   code is written. (Cross-surface case: the engineer that owns its platform classifies
+   it.)
+6. **Confirm the parent PBI ID** — ask if not already provided.
+7. **Invoke the `inject-test-cases` skill** to push the approved, **classified** batch —
+   only after the user explicitly agrees. The skill owns the field/Tags mapping and the
+   MCP write calls (`execute_qa_feedback` preferred; `create_*_test_case` as fallback).
+   You do not call those MCP tools directly.
+8. **Report back** — how many TCs created, their Azure work item IDs, any errors. The
    skill fixes and retries any rejected case — never silently skip.
-8. **Optional deliverables** — on request:
+9. **Optional deliverables** — on request:
    - **Client UAT doc** — if cases are injected and `UAT`-tagged in Azure, invoke
      **`build-uat-doc`** (MCP, `Tag = UAT`). To build it from the approved *chat* set
      instead, delegate to the **`drafter`** subagent.
-   - **End-user feature manual** — always delegate to the **`drafter`** subagent (no
-     skill covers this).
+   - **End-user feature manual** — invoke **`create-user-manual`** (Drafter-owned, fixed
+     iHorizons template). **Screenshot-gated** — it won't build without screenshots
+     (provided directly, captured from a web link via the playwright MCP, or from an APK
+     via the Appium MCP once connected).
    Hand the `drafter` only the signed-off set; it formats, it does not re-judge.
 
 ---
@@ -200,7 +226,10 @@ so the surrounding procedure, mapping, and guardrails always travel with the cal
 
 ## Reviewing Output (Phase 1 gate)
 
-Before signing off, verify the QA Engineer's output against this checklist:
+Before signing off, verify the QA Engineer's output against this checklist **for the
+active mode**. In **Normal mode**, the API, Additional, and non-functional rows are
+**out of scope by design** — their absence is correct and must **not** be treated as a
+gap. In **Deep mode**, all rows are required.
 
 ```
 [ ] UI            — layout, RTL, empty/loading/error states, labels
@@ -208,19 +237,22 @@ Before signing off, verify the QA Engineer's output against this checklist:
 [ ] Auth          — roles, session, forced browsing, concurrent sessions
 [ ] Functional-High — full happy + sad end-to-end flows
 [ ] Functional-Low  — every field and control: valid, empty, boundary, invalid
-[ ] API           — endpoints, status codes, error payloads, auth failures
-[ ] Edge          — 4-step methodology run explicitly (objects→statuses→relations→derivation)
-[ ] Additional    — integration failures, concurrency, performance (if applicable)
+[ ] API           — endpoints, status codes, error payloads, auth failures   ← DEEP MODE ONLY
+[ ] Edge          — Deep: full 4-step methodology (objects→statuses→relations→derivation) · Normal: lighter key-edge sweep
+[ ] Additional    — integration failures, concurrency, performance           ← DEEP MODE ONLY
 ```
 
-**Reject and send back** if: any category is absent without a documented N/A reason;
+**Reject and send back** if: any **in-scope** category (for the active mode) is absent
+without a documented N/A reason;
 Functional-Low cases are missing for any field in the spec; expected results say
 "works correctly" or similar vague phrasing; any case is missing its `Tags` value;
 `UAT` is missing from a **direct acceptance** scenario; a **main functional** scenario
 is missing `Regression`; **`Regression` is over-applied** to deep field-validation,
 boundary, or edge cases (it must stay a focused main-scenario subset — this is the
-common failure); a separate `Automated` tag was used (`Regression` already means
-automated); edge cases were listed without the 4-step derivation being shown.
+common failure); an execution-method tag (`Automation` / `Manual` / `Automated`) was
+added at this stage (that classification is the Automation engineer's pre-injection pass,
+**not** the qa-engineer's job — Phase-1 output must not carry it); edge cases were listed
+without the 4-step derivation being shown.
 
 ---
 
@@ -232,7 +264,7 @@ Full mapping is in `@.claude/context/test-case-template.md`. Key points:
 - `scenario`: `positive` | `negative`
 - `impact_area`: `UI` | `Backend` | `Both`
 - `priority`: `1`–`4` (or `0` for MCP auto-assess)
-- `Tags`: the agent's decided keywords — Lifecycle (`UAT`/`Regression`) + Service + Platform (`IOS`/`Android`/`Web`/`Control_Panel`) + Category + optional business. Pass via the `tags` key per item in `execute_qa_feedback`, or the `extra_tags` arg in `create_*_test_case`. The MCP adds **only** `Ai_MCP_Injected` (provenance) and injects the rest verbatim — it makes no tag decisions. Lands in Azure `System.Tags` (queryable). Taxonomy in `woqod-standards.md`.
+- `Tags`: the decided keywords — Lifecycle (`UAT`/`Regression`) + **Execution method (`Automation`/`Manual` — exactly one; set by the Automation engineer in the pre-injection pass, not the qa-engineer)** + Service + Platform (`IOS`/`Android`/`Web`/`Control_Panel`) + Category + optional business. Pass via the `tags` key per item in `execute_qa_feedback`, or the `extra_tags` arg in `create_*_test_case`. The MCP adds **only** `Ai_MCP_Injected` (provenance) and injects the rest verbatim — it makes no tag decisions. Lands in Azure `System.Tags` (queryable). Taxonomy in `woqod-standards.md`.
 
 ---
 
@@ -247,57 +279,9 @@ format — output to chat, clearly a subset, not full coverage. Inject (via the
 
 ## Automation Layer (Phase 3) — Executable Tests
 
-Phase 1 derives cases, Phase 2 injects them. **Phase 3 turns approved cases into
-runnable automated tests.** The hook already exists in the standards: cases tagged
-`Regression` are *"the automation candidates."* The automation engineers build and run
-the suite from that backlog. You remain the **router and owner** — you delegate, then
-review what comes back.
-
-> **Contract:** all automation structure, stack, locator strategy, wrapper rules, and
-> reporting live in `@.claude/context/automation-standards.md`. The engineers and skills
-> apply it; do not improvise framework decisions inline.
-
-### Automation sub-agents (they write code and run it)
-
-| Agent | What it does | Delegate when… |
-|---|---|---|
-| **`senior-web-automation-eng`** | Builds/extends the **Playwright + Python (pytest)** web framework; POM, wrappers, locator extraction, writes & runs web tests, Allure reports. | The target surface is a **website** (WOQOD/FAHES/Qjet) or the **CMS**. |
-| **`senior-mobile-automation-eng`** | Builds/extends the **Appium + Python (pytest)** mobile framework; Screen-Object model, wrappers, locator extraction, writes & runs app tests, Allure reports. | The target surface is the **mobile app** (iOS/Android). |
-
-### Automation skills router
-
-| When the user wants… | Invoke this skill | Notes |
-|---|---|---|
-| Verify environment readiness for a surface | **`prep-automation-env`** | Gate. Reads `.mcp.json`, probes host (Node, Appium, drivers, ADB), checks `./automation/`. Auto-scaffolds if missing. iOS on non-macOS = ACTIONABLE. |
-| Route an injected batch to automation | **`route-automation`** | Phase 2.5 router (hybrid trigger). Reads Azure, classifies surfaces, runs prep, waits for approval, delegates engineers. iOS on non-macOS = skipped with warning. |
-| Create/initialize the framework | **`scaffold-automation-framework`** | Generates `./automation/` at project root (web/mobile/both). Git-ignored — not committed here. |
-| Locators for a page/screen | **`extract-locators`** | On-demand, from the live app, into the Page/Screen Object. Never bulk-guessed. |
-| Automate an approved case | **`automate-test-case`** | Approved/signed-off case → runnable pytest test. No case re-judging. |
-| Run the suite + report | **`run-automation`** | pytest → Allure with screenshots + video on failure. |
-
-### Hard boundaries (Phase 3)
-
-- **Framework is NOT in this repo.** It is generated at the **project root** (`./automation/`)
-  and **git-ignored** — this repo is the MCP / QA-orchestration system only.
-- **Surface is per feature** — web → Playwright, app → Appium, chosen from the WOQOD
-  Service ↔ Platform matrix. Cross-surface features get a test in each tree.
-- **Automation never re-judges coverage.** The engineers consume *approved* cases; if
-  coverage looks wrong, they flag it back to you — they do not invent or rewrite cases.
-- **Azure integration is PARTIAL.** `route-automation` reads the injected batch from
-  Azure (one read call under the parent PBI) — that is the source of truth for what
-  gets automated. **Result post-back is still DEFERRED.** Nothing is written back to
-  Azure from Phase 3 until you explicitly enable it. Wiring outcomes to
-  `get_test_outcome_summary` is the final step, on the user's say-so.
-
-## Process Improvement
-
-Raise one or two concrete suggestions per interaction when you spot recurring coverage
-gaps, repetitive manual work, or requirement ambiguities.
-
-## Operating Principles
-- Think QA, not dev. Ask for AC when missing. State assumptions explicitly.
-- Inclusive on analysis, concise on prose.
-- Default scope (platforms + languages): see `@.claude/context/woqod-standards.md` → *Default Scope*.
-
----
-*Living document. Refine the referenced context files as the QA process matures.*
+Phase 1 derives cases, Phase 2 **classifies** them (`Automation`/`Manual`) and injects
+them. **Phase 3 turns the `Automation`-tagged cases into runnable automated tests.** The
+automation backlog is **every case tagged `Automation`** — the broad automatable set
+(`Regression` is just the critical re-run subset within it). The **same** automation
+engineers that ran the Phase-2 classification pass build and run the suite from that
+backlog. You remain the **router and owner** 

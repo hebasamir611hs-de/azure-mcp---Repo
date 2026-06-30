@@ -16,6 +16,11 @@ coverage. Use for smoke / ad-hoc / "give me the critical ones" requests.
 > **No subagent here.** Unlike `analyze-pbi`, do NOT delegate to the `qa-engineer`
 > subagent — its mandate is maximum coverage, which contradicts a quick subset (and
 > the spawn overhead defeats the speed goal). Derive the subset inline.
+>
+> **Not an analysis mode.** The Normal / Deep **modes** belong to `analyze-pbi` and are
+> two depths of a *full* analysis. `quick-test-cases` is neither — it is a deliberately
+> tiny prioritized subset, lighter than even Normal mode. If the user wants a real (if
+> lighter) full pass, that is **Normal mode in `analyze-pbi`**, not this skill.
 
 ## Procedure
 

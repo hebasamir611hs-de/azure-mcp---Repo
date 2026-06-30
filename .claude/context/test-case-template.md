@@ -24,8 +24,8 @@
 | **scenario** | `positive` or `negative` | `negative` |
 | **impact_area** | MCP injection area — see mapping below | `Backend` |
 | **priority** | `1`–`4` or `0` for MCP auto-assess | `2` |
-| **execution_type** | `Manual` / `Automated` (blank = MCP auto-determines) | `Automated` |
-| **Tags** | The agent's full tag decision (≥1 keyword). Combine axes: Lifecycle (`UAT` / `Regression`) + Service + Platform (`IOS` / `Android` / `Web` / `Control_Panel`) + Category + optional business keyword. All values per `woqod-standards.md` → Tag Taxonomy. The MCP adds only `Ai_MCP_Injected` and injects the rest verbatim. **Maps to Azure `System.Tags` — queryable.** | `["Functional-High", "Regression", "FAHES", "Web"]` |
+| **execution_type** | `Manual` / `Automated` (blank = MCP auto-determines). Provisional from the QA Engineer; the Automation engineer **finalizes** it to match the `Automation` / `Manual` tag in the pre-injection pass. | `Automated` |
+| **Tags** | The agent's full tag decision (≥1 keyword). Combine axes: Lifecycle (`UAT` / `Regression`) + **Execution method (`Automation` / `Manual` — exactly one, added by the Automation engineer pre-injection, *not* the QA Engineer)** + Service + Platform (`IOS` / `Android` / `Web` / `Control_Panel`) + Category + optional business keyword. All values per `woqod-standards.md` → Tag Taxonomy. The MCP adds only `Ai_MCP_Injected` and injects the rest verbatim. **Maps to Azure `System.Tags` — queryable.** | `["Functional-High", "Regression", "Automation", "FAHES", "Web"]` |
 
 ---
 
@@ -42,9 +42,11 @@
 | Edge | `Edge` |
 | Performance / Load | `Intensive` |
 
-> The mapping collapses 8 categories into 4 for Azure storage. This is **only a
-> storage detail** — it does not reduce what the QA Engineer produces. Always
-> generate cases for all 8 categories; the mapping is applied at injection time.
+> The mapping collapses the framework categories into 4 for Azure storage. This is
+> **only a storage detail** — it does not reduce what the QA Engineer produces. Generate
+> cases for the categories **in scope for the active analysis mode** (Deep = all 8;
+> Normal = the functional-focused subset, no API / Additional / non-functional — see
+> `analysis-framework.md` → *Analysis Modes*); the mapping is applied at injection time.
 
 ---
 
@@ -123,7 +125,7 @@ Do **not** put lifecycle markers in the description anymore — they live in the
 
 The `Tags` attribute is **authoritative and queryable**. At injection the MCP merges
 it into Azure `System.Tags` alongside the auto dimension tags. This is how the
-automation suite (`Tag = Regression`) and the client doc (`Tag = UAT`) are later built.
+automation suite (`Tag = Automation`) and the client doc (`Tag = UAT`) are later built.
 
 **How tags reach Azure:**
 
@@ -137,10 +139,14 @@ automation suite (`Tag = Regression`) and the client doc (`Tag = UAT`) are later
   Lifecycle tag that applies.
 - **`UAT`** → a **direct, primary** acceptance scenario for the client doc (Drafter).
   Not every case is a UAT case.
-- **`Regression`** → a **MAIN functional scenario** that should be automated. This *is*
-  the automated set — there is **no separate `Automated` tag**. Tag only the feature's
-  main scenarios `Regression`; **do not** tag deep field-validation, boundary, or edge
-  cases. The automation suite is `Tag = Regression` and must stay a focused subset.
+- **`Regression`** → a **MAIN functional scenario** in the **re-run** suite. Tag only the
+  feature's main scenarios `Regression`; **do not** tag deep field-validation, boundary,
+  or edge cases — it must stay a focused subset. `Regression` is a *suite* tag, not the
+  execution-method tag.
+- **`Automation` / `Manual`** (Axis 1b) → the **execution-method** tag, exactly one per
+  case, 100% coverage. Added by the **Automation engineer** in the pre-injection pass,
+  **not** the QA Engineer. The automation suite is `Tag = Automation` (the broad
+  automatable set; every `Regression` case is also `Automation`, never `Manual`).
 - `UAT` and `Regression` overlap on main happy paths but are decided independently.
 - The MCP adds exactly one tag of its own — **`Ai_MCP_Injected`** (provenance) — and
   dedupes. Do **not** include it in your `Tags`. The MCP performs **no** tag judgement;
@@ -179,20 +185,24 @@ injection after the QA Manager signs off.
 | **scenario** | `negative` |
 | **impact_area** | `Backend` |
 | **priority** | `2` |
-| **execution_type** | `Manual` |
-| **Tags** | `["Functional-Low", "CMS", "Control_Panel"]` |
+| **execution_type** | `Automated` |
+| **Tags** | `["Functional-Low", "Automation", "CMS", "Control_Panel"]` |
 
 > This is a **deep field-validation** case, so it is **neither** `Regression` **nor**
-> `UAT` — exhaustive field checks are not main automation scenarios and are not client
-> sign-off scenarios. It still ships in the full set, just without those lifecycle tags.
-> The feature's **main** happy-path flow (e.g. "save a valid Session Timeout and confirm
-> it takes effect") is what would carry `Regression` — and usually `UAT` too.
+> `UAT` — exhaustive field checks are not main re-run scenarios and are not client
+> sign-off scenarios. **But it is still automatable**, so the Automation engineer tags it
+> **`Automation`** in the pre-injection pass — a textbook example of `Automation` being
+> *broader* than `Regression`. It ships in the full set with `Automation` but without the
+> `Regression` / `UAT` lifecycle tags. The feature's **main** happy-path flow (e.g. "save
+> a valid Session Timeout and confirm it takes effect") is what would carry `Regression` —
+> and usually `UAT` too. *(The QA Engineer writes this case without the `Automation` tag;
+> the Automation engineer adds it before injection.)*
 
 ---
 
 ## Azure DevOps Notes
 
-- The **full test set** (all 8 categories, all polarities) lives in Azure DevOps linked under the PBI.
+- The **full test set** for the analysis (all in-scope categories and polarities — all 8 in Deep mode; the functional-focused subset in Normal mode) lives in Azure DevOps linked under the PBI.
 - The **client UAT document** is a filtered subset — `Tag = UAT` cases only — produced by the Drafter. It is a separate deliverable.
-- The **automation suite** is the `Tag = Regression` subset.
-- Azure tags on each injected case = **`Ai_MCP_Injected`** (the single MCP-applied provenance tag) **plus** the project-layer `Tags` the agent decided (Lifecycle, Service, Platform, Category, optional business keyword — see `woqod-standards.md`). The MCP adds nothing else and injects the agent's tags verbatim.
+- The **automation suite** is the `Tag = Automation` subset (every `Regression` case is included; `Regression` is the critical re-run subset within it). A `Tag = Manual` case is never automated.
+- Azure tags on each injected case = **`Ai_MCP_Injected`** (the single MCP-applied provenance tag) **plus** the project-layer `Tags` decided by the agents (Lifecycle, Execution method `Automation`/`Manual`, Service, Platform, Category, optional business keyword — see `woqod-standards.md`). The MCP adds nothing else and injects the decided tags verbatim.
