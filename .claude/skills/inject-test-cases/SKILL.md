@@ -18,12 +18,16 @@ and signed off via `analyze-pbi` (or `quick-test-cases`), stop and do that first
 ## Procedure
 
 1. **Confirm the parent PBI** — `$ARGUMENTS`. Do not proceed without it.
-2. **Confirm sign-off** — the set being injected must be the approved Phase-1 output.
-   If anything is unapproved, return to `analyze-pbi`.
+2. **Confirm sign-off & classification** — the set must be (a) the approved Phase-1
+   output and (b) **classified `Automation` / `Manual`** by the Automation engineer
+   (exactly one per case, 100% coverage). If anything is unapproved, return to
+   `analyze-pbi`; if any case is unclassified, run the Automation classification pass
+   first (see `CLAUDE.md` → Phase 2, step 5).
 3. **Map fields** per `@.claude/context/test-case-template.md` — `test_type`,
    `scenario`, `impact_area`, `priority`, `execution_type`, and `Tags`
-   (passed via the `tags` key per item). The MCP performs **no** tag judgement — it
-   injects the agent's decided tags verbatim and adds only the `Ai_MCP_Injected`
+   (passed via the `tags` key per item) — `Tags` must include **exactly one
+   execution-method tag (`Automation` / `Manual`)** per case. The MCP performs **no** tag
+   judgement — it injects the decided tags verbatim and adds only the `Ai_MCP_Injected`
    provenance tag (do not include that one yourself); it dedupes.
 4. **Inject the batch** — prefer `mcp__azure-devops__execute_qa_feedback` for the full
    approved set in one call. Use `mcp__azure-devops__create_english_test_case` /

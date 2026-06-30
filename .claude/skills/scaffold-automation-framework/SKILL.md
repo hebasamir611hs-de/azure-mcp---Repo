@@ -46,4 +46,4 @@ user needs first.)
 ## Hard boundary
 This skill generates structure + `core/` + one example only. It does **not** write the
 feature test suite (that's `automate-test-case`), does **not** run the full suite (that's
-`run-automation`), and makes **no** Azure DevOps calls (integration is deferred).
+`run-automation`), and makes **no** Azure DevOps calls (it generates structure only).

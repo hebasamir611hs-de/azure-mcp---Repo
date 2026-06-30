@@ -1,6 +1,6 @@
 ---
 name: automate-test-case
-description: Turn an APPROVED QA test case into a runnable pytest test in the existing ./automation/ framework — building the Page/Screen Object methods, requesting locators as needed, mirroring the case's concrete data, tagging with markers + the QA traceability ID, and asserting in the test. Web → Playwright, mobile → Appium, chosen by the case's target surface. Use after the framework is scaffolded and a signed-off case (from qa-engineer / the chat set) is ready to automate. Does NOT generate, edit, or re-judge the test case itself, and makes no Azure DevOps calls (integration deferred) — it reads cases from the approved set.
+description: Turn an APPROVED QA test case into a runnable pytest test in the existing ./automation/ framework — building the Page/Screen Object methods, requesting locators as needed, mirroring the case's concrete data, tagging with markers + the QA traceability ID, and asserting in the test. Web → Playwright, mobile → Appium, chosen by the case's target surface. Use after the framework is scaffolded and an Automation-tagged signed-off case (from the qa-engineer set, classified Automation/Manual by the Automation engineer) is ready to automate. Does NOT generate, edit, or re-judge the test case itself. The engineer sources its Tag=Automation cases from the approved chat set or by reading the injected Azure suite (read-only via get_test_cases_from_suite); it posts nothing back to Azure (post-back deferred).
 ---
 
 # Automate Test Case — Approved Case → Runnable pytest Test
@@ -9,9 +9,10 @@ Translate an **already-approved** QA test case into a clean, runnable pytest tes
 `./automation/`, using Page/Screen Objects and the wrapper layer. This is engineering of
 *existing* coverage — **no test-case creation or re-judging happens here.**
 
-**Argument:** the case(s) to automate → `$ARGUMENTS` (a test case ID/title or the approved
-chat set). If no approved case is in hand, stop — route to `analyze-pbi` /
-`quick-test-cases` first.
+**Argument:** the case(s) to automate → `$ARGUMENTS` (a test case ID/title, the approved
+chat set, or an injected Azure suite as `plan_id` + `suite_id` — the engineer reads it via
+`mcp__azure-devops__get_test_cases_from_suite` and pulls its `Tag = Automation` cases). If
+no approved case is in hand, stop — route to `analyze-pbi` / `quick-test-cases` first.
 
 > Structure, wrapper API, markers↔tags mapping, naming, and the Definition of Done live
 > in `@.claude/context/automation-standards.md`. This skill applies them.
@@ -20,7 +21,9 @@ chat set). If no approved case is in hand, stop — route to `analyze-pbi` /
 
 1. **Preconditions.** Confirm (a) `./automation/` exists — if not, run
    `scaffold-automation-framework` first; (b) the case is **approved/signed-off** — if
-   not, send the user to `analyze-pbi` / `quick-test-cases`.
+   not, send the user to `analyze-pbi` / `quick-test-cases`; (c) the case is tagged
+   **`Automation`** (not `Manual`) — a `Manual` case is never automated. If it isn't
+   classified yet, run the Automation classification pass first.
 2. **Read the contract** — `@.claude/context/automation-standards.md` (test structure,
    AAA, markers, traceability, "no locators in tests", "no `sleep`").
 3. **Pick the engineer** by the case's target surface:
@@ -35,9 +38,11 @@ chat set). If no approved case is in hand, stop — route to `analyze-pbi` /
      queries; no asserts, no `sleep`, no test data inside.
    - **Test** — AAA shape, concrete data **mirrored from the case** (e.g. `Top-up = 50
      QAR`), assertions in the test, wrapped meaningful steps in `allure.step(...)`.
-   - **Tag it** — markers per the case's lifecycle tags (`regression` / `smoke` /
-     `sanity` + `web`/`mobile`) and the QA **traceability ID** in a marker/docstring
-     (e.g. `# TAG-TOPUP-TC-014`).
+   - **Tag it** — markers mirroring the case's tags: `regression` (only if the case is in
+     the regression re-run subset) + the surface marker (`web` / `mobile` / `ios` /
+     `android`), plus the QA **traceability ID** in a marker/docstring (e.g.
+     `# TAG-TOPUP-TC-014`). There is **no** `automation` marker — every authored test is an
+     `Automation` case by definition.
 6. **Validate against the Definition of Done** — no raw driver in the test, locators from
    `extract-locators`, independent/idempotent, Allure title + severity (from QA priority).
    Run the single test (or its marker) and confirm green on a clean state; for mobile
@@ -48,5 +53,6 @@ chat set). If no approved case is in hand, stop — route to `analyze-pbi` /
 
 ## Hard boundary
 Automates approved cases only. **Never** invents, edits, or re-prioritizes a test case;
-if coverage looks wrong, flag it to the QA Manager. No Azure DevOps calls — the backlog
-comes from the approved set until integration is explicitly enabled.
+if coverage looks wrong, flag it to the QA Manager. This skill posts nothing back to Azure
+(post-back is deferred); cases come from the approved chat set, or the engineer reads the
+`Tag = Automation` cases from the injected Azure suite via `get_test_cases_from_suite`.

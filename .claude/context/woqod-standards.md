@@ -47,7 +47,8 @@ Examples:
 Every test case carries a **`Tags`** attribute — one or more keywords that describe
 it at a glance. Tags are **queryable in Azure DevOps** (they land in `System.Tags`
 via the MCP), so they are how we slice the suite later: build the automation set
-(`Tag = Regression`), export the client doc (`Tag = UAT`), etc.
+(`Tag = Automation`), pick the regression re-run subset (`Tag = Regression`), export the
+client doc (`Tag = UAT`), etc.
 
 **The agent decides every tag.** Tag selection is pure QA judgement and lives here in
 the standards — the agent applies it when it writes each case. The MCP does **no** tag
@@ -71,7 +72,7 @@ These mark **what the case is used for**.
 
 | Tag | Meaning | Used for |
 |---|---|---|
-| `Regression` | A **MAIN / basic functional scenario** that should be **automated**. `Regression` **is** the automated set — there is **no separate `Automated` tag**. | The automation suite is built from `Tag = Regression`. Re-run after every change. |
+| `Regression` | A **MAIN / basic functional scenario** — the feature's headline happy + critical-negative paths that must be **re-run after every change**. A focused subset, not most of the cases. | The regression **re-run** suite. Every `Regression` case is also `Automation` (it must be automatable), so it is part of the automation build; the `regression` marker selects it as the critical subset to run most often. |
 | `UAT` | A **direct, primary** acceptance scenario in plain business language — what the **client** signs off on. | Client UAT document (the Drafter filters `Tag = UAT`). |
 
 > **How to decide `Regression` — this is the rule that keeps the set sane:**
@@ -81,9 +82,11 @@ These mark **what the case is used for**.
 >   *main* scenarios, and tag only those. A large feature must yield a **focused**
 >   regression subset, **not** most of its cases.
 > - **Do NOT tag deeper cases `Regression`:** exhaustive field validations, boundary
->   perturbations, rare edge combinations, and minor UI checks are **not** automation
->   candidates. They stay in the full set, simply without the `Regression` tag.
-> - `Regression` already means "automated" — **never** add a separate `Automated` tag.
+>   perturbations, rare edge combinations, and minor UI checks are **not** part of the
+>   re-run suite. They stay in the full set, simply without the `Regression` tag.
+> - `Regression` is a **suite** tag (what to re-run), **not** the execution-method tag.
+>   Whether a case is automated is the separate **`Automation` / `Manual`** decision
+>   (Axis 1b below) — every `Regression` case is `Automation`, never `Manual`.
 >
 > **How to decide `UAT`:**
 > - `UAT` = a **direct, primary** scenario the client validates — the main success
@@ -91,6 +94,30 @@ These mark **what the case is used for**.
 >   client sign-off document; **not** every case is a UAT case.
 > - Main happy paths are often **both** `UAT` and `Regression`, but the two are decided
 >   independently — neither implies the other.
+
+### Axis 1b — Execution Method *(`Automation` / `Manual` — mandatory, exactly one)*
+Marks **how the case is executed**. **Every case carries exactly one** of these — never
+both, never neither. Together they cover **100%** of the set.
+
+| Tag | Meaning |
+|---|---|
+| `Automation` | The case **can be automated** and therefore **will be** — it joins the automation backlog. **Bias toward this:** anything technically automatable gets `Automation`, not just the `Regression` subset. |
+| `Manual` | The case **cannot reasonably be automated** — physical/hardware steps (e.g. tag at the fuel gun), purely visual / look-and-feel checks, CAPTCHA, OTP/biometric by a human, device-permission dialogs, exploratory / usability judgement. |
+
+> **Who & when — this axis is different from every other tag.** `Automation` / `Manual`
+> is decided by the **Automation engineer** (`senior-web-automation-eng` or
+> `senior-mobile-automation-eng`, by surface), **not** by the `qa-engineer`. It is
+> assigned in a dedicated **classification pass that runs after Phase-1 sign-off and
+> *before* injection**, so every case already carries it when it lands in Azure. The
+> `qa-engineer` leaves this axis blank.
+>
+> **Relationship to `Regression`:** `Regression` ⊆ `Automation`. A `Regression` case is
+> always `Automation` (never `Manual`). `Automation` is the **broader** set — the whole
+> automation build sources from `Tag = Automation`; `Regression` is only the critical
+> re-run subset within it.
+>
+> **Alignment with the `execution_type` attribute:** the tag is authoritative — set the
+> case's `execution_type` to match (`Automation` → `Automated`, `Manual` → `Manual`).
 
 ### Axis 2 — Service
 Per the **project's** service codes. For this project: `TAG` · `FAHES` · `BOOK` ·
@@ -115,10 +142,12 @@ A single project domain keyword when it helps later filtering, e.g. `Payment`, `
 ### Do not re-add the provenance tag
 The MCP **automatically** applies `Ai_MCP_Injected` at injection — do **not** include it
 in your `Tags`. Your `Tags` attribute is the full WOQOD-layer decision (Lifecycle +
-Service + Platform + Category + optional Business); the MCP adds nothing else and
-dedupes. There are **no** other auto-applied tags — `test_type`, `scenario`,
-`execution_type`, `impact_area`, and language remain case attributes but are **not**
-emitted as tags.
+Execution method + Service + Platform + Category + optional Business); the MCP adds
+nothing else and dedupes. There are **no** auto-applied tags beyond `Ai_MCP_Injected` —
+`test_type`, `scenario`, `execution_type`, `impact_area`, and language remain case
+**attributes** and are **not** auto-emitted as tags. *(The `Automation` / `Manual` tag of
+Axis 1b is **not** an auto-emission of the `execution_type` attribute — it is a deliberate
+decision the Automation engineer adds; keep the two aligned.)*
 
 ## Money & Payment Rules (special attention)
 WOQOD handles **real payments** — top-up, fueling at the pump, and FAHES payments.
@@ -130,16 +159,23 @@ For any money flow, always:
 - Treat any money flow as **P1**.
 
 ## Definition of Done (coverage)
-A feature's analysis is complete only when ALL are addressed:
-- Every analysis-framework category covered (or explicitly marked N/A with a reason).
-- Happy + sad paths for each flow and each field.
-- Edge cases derived via the mandatory 4-step methodology.
+A feature's analysis is complete only when ALL are addressed **for the active analysis
+mode** (Normal default / Deep — see `analysis-framework.md` → *Analysis Modes*):
+- Every **in-scope** analysis-framework category covered (or explicitly marked N/A with a
+  reason). *In Normal mode, API, the Additional/Conditional category, and all
+  non-functional/security/performance cases are out of scope by design — not gaps.*
+- Happy + sad paths for each in-scope flow and each field.
+- Edge cases derived via the 4-step methodology (**full** in Deep mode; a **lighter**
+  key-edge sweep in Normal mode).
 - Each acceptance criterion maps to ≥ 1 test case (traceability).
 - Money/payment rules applied wherever value changes hands.
 - Every test case carries a `Tags` value (≥1 tag — see Tag Taxonomy).
 - `UAT` applied to the **direct, primary** acceptance scenarios for the client deliverable.
 - `Regression` applied **only** to the feature's MAIN functional scenarios (the focused
-  automation subset) — never to deep field-validation, boundary, or edge cases.
+  re-run subset) — never to deep field-validation, boundary, or edge cases.
+- **Every case classified `Automation` or `Manual`** (Axis 1b — exactly one, 100%
+  coverage) by the Automation engineer in the **pre-injection** pass; no case left
+  unclassified, none carrying both.
 
 ## Writing Rules
 - **Titles:** action + condition (e.g. "Top up WOQOD account with expired card").
