@@ -1,6 +1,25 @@
-# Secrets and Sensitive Info
+# Secrets and Sensitive Info — ANY token/credential/PAT file (recursive)
 .env
+.env.*
+!.env.example
 mcp-config.json
+**/credentials*.json
+**/credentials*.yaml
+**/credentials*.yml
+**/secrets*.json
+**/secrets*.yaml
+**/secrets*.yml
+*.pat
+*.token
+.azure-pat
+.npmrc
+.pypirc
+*.pem
+*.key
+!*.pub.key
+service-account*.json
+auth*.json
+
 
 # Environment and Cache
 .venv/
