@@ -26,6 +26,7 @@ auth*.json
 __pycache__/
 core/__pycache__/
 .vscode/
+graphify-out/
 
 # Project Artifacts (UAT, Reports, Summaries)
 outputs/
