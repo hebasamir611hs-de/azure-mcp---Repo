@@ -18,7 +18,43 @@ from core.utils import (
     validate_tc_attributes,
     assess_priority,
     determine_execution_type,
+    normalize_execution_type,
 )
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# INTERNAL: SHARED TAGGING + CREATION HELPERS
+# ─────────────────────────────────────────────────────────────────────────────
+
+def _build_tags_string(extra_tags: list) -> str:
+    """
+    Unified tagging model: exactly ONE MCP provenance tag (Ai_MCP_Injected) plus
+    the agent's decided tags passed through verbatim, deduped case-insensitively.
+    """
+    tag_parts = ["Ai_MCP_Injected"]
+    seen = {t.lower() for t in tag_parts}
+    for t in (extra_tags or []):
+        t = (t or "").strip()
+        if t and t.lower() not in seen:
+            tag_parts.append(t)
+            seen.add(t.lower())
+    return "; ".join(tag_parts)
+
+
+def _create_with_tag_fallback(client, project: str, patch_doc: list) -> tuple:
+    """
+    Creates the work item; on a tags-permission rejection (TF401289) retries
+    once WITHOUT the System.Tags operation as graceful degradation.
+
+    Returns: (work_item, tags_applied: bool)
+    """
+    try:
+        return client.create_work_item(patch_doc, project, "Test Case"), True
+    except Exception as e:
+        if "tags" in str(e).lower() or "TF401289" in str(e):
+            reduced = [op for op in patch_doc if op.path != "/fields/System.Tags"]
+            return client.create_work_item(reduced, project, "Test Case"), False
+        raise
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -82,6 +118,7 @@ def _create_test_case(
     are ignored.
     """
     try:
+        execution_type = normalize_execution_type(execution_type)
         is_valid, error_msg = validate_tc_attributes(
             title, steps_list, expected_list, test_type, scenario,
             execution_type or "Automated", impact_area, language
@@ -111,15 +148,7 @@ def _create_test_case(
         # and is the agent's call, never the MCP's. (See woqod-standards.md → Tag
         # Taxonomy.) test_type/scenario/execution_type/impact_area/language stay
         # as validated attributes but are no longer emitted as tags.
-        tag_parts = ["Ai_MCP_Injected"]
-        if extra_tags:
-            seen = {t.lower() for t in tag_parts}
-            for t in extra_tags:
-                t = (t or "").strip()
-                if t and t.lower() not in seen:
-                    tag_parts.append(t)
-                    seen.add(t.lower())
-        tags = "; ".join(tag_parts)
+        tags = _build_tags_string(extra_tags)
 
         patch_doc = [
             JsonPatchOperation(op="add", path="/fields/System.Title", value=title),
@@ -134,18 +163,9 @@ def _create_test_case(
             })
         ]
 
-        tags_applied = True
-        try:
-            new_tc = client.create_work_item(patch_doc, project, "Test Case")
-        except Exception as e:
-            # TF401289 = tags permission error — retry without tags as graceful degradation
-            if "tags" in str(e).lower() or "TF401289" in str(e):
-                patch_doc = [op for op in patch_doc if op.path != "/fields/System.Tags"]
-                new_tc = client.create_work_item(patch_doc, project, "Test Case")
-                tags = ""
-                tags_applied = False
-            else:
-                raise e
+        new_tc, tags_applied = _create_with_tag_fallback(client, project, patch_doc)
+        if not tags_applied:
+            tags = ""
 
         return {
             "status": "created",
@@ -328,7 +348,7 @@ def execute_qa_feedback(parent_id: int, language: str, feedback_items: list) -> 
             test_type = item.get("test_type", "Functional")
             scenario = item.get("scenario", "positive")
             priority = item.get("priority", 0)
-            execution_type = item.get("execution_type", "")
+            execution_type = normalize_execution_type(item.get("execution_type", ""))
             impact_area = item.get("impact_area", "UI")
             extra_tags = item.get("tags", []) or []
 
@@ -352,14 +372,7 @@ def execute_qa_feedback(parent_id: int, language: str, feedback_items: list) -> 
                 # Unified tagging model: MCP applies only the Ai_MCP_Injected
                 # provenance tag; every other tag is the agent's decision, passed
                 # through verbatim. No tag judgement happens here.
-                tag_parts = ["Ai_MCP_Injected"]
-                seen = {t.lower() for t in tag_parts}
-                for t in extra_tags:
-                    t = (t or "").strip()
-                    if t and t.lower() not in seen:
-                        tag_parts.append(t)
-                        seen.add(t.lower())
-                tags = "; ".join(tag_parts)
+                tags = _build_tags_string(extra_tags)
 
                 patch_doc = [
                     JsonPatchOperation(op="add", path="/fields/System.Title", value=title),
@@ -373,9 +386,12 @@ def execute_qa_feedback(parent_id: int, language: str, feedback_items: list) -> 
                         "url": f"{os.getenv('AZURE_ORG_URL')}/_apis/wit/workItems/{parent_id}"
                     })
                 ]
-                new_tc = client.create_work_item(patch_doc, project, "Test Case")
+                new_tc, tags_applied = _create_with_tag_fallback(client, project, patch_doc)
+                if not tags_applied:
+                    tags = ""
                 created.append({
                     "test_case_id": new_tc.id,
+                    "tags_applied": tags_applied,
                     "comment_addressed": comment,
                     "title": title,
                     "description": description,
@@ -385,7 +401,7 @@ def execute_qa_feedback(parent_id: int, language: str, feedback_items: list) -> 
                     "execution_type": execution_type,
                     "impact_area": impact_area,
                     "language": language,
-                    "tags": tags.split("; ")
+                    "tags": tags.split("; ") if tags else []
                 })
             except Exception as e:
                 errors.append({"index": i, "comment": comment, "error": str(e)})

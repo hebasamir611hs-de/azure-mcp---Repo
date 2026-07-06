@@ -71,7 +71,8 @@ not improvise them inline. Invoke the matching skill instead:
 | Full analysis of a PBI/feature | **`analyze-pbi`** | Phase 1. Reasoning only — produces all cases in chat, never injects. |
 | A quick / smoke / adhoc subset | **`quick-test-cases`** | Phase 1 subset. Output to chat, clearly not full coverage. |
 | Push an approved set to Azure DevOps | **`inject-test-cases`** | Phase 2. **Requires explicit user confirmation** — never auto-invoke. |
-| The client UAT document | **`build-uat-doc`** | Phase 2 deliverable. Cases must already be injected with `UAT` tags. |
+| The client UAT document (from Azure) | **`build-uat-doc`** | Phase 2 deliverable. Cases must already be injected with `UAT` tags. |
+| The client UAT document (from the approved chat set) | **`build-chat-uat-doc`** | Phase 2 deliverable. No Azure round-trip — formats the signed-off chat set directly via the `drafter`. |
 | Verify automation environment for a surface | **`prep-automation-env`** | Phase 3 gate. Checks MCP + host + framework readiness for `web`/`mobile`/`both`. Auto-scaffolds if missing. iOS on non-macOS = ACTIONABLE. |
 | Route injected cases to automation (hybrid) | **`route-automation`** | Phase 2.5 router. Reads Azure batch, classifies by Platform, runs `prep-automation-env`, waits for approval, delegates engineers. iOS on non-macOS is skipped with explicit warning. |
 | The end-user feature manual | **`create-user-manual`** | Phase 2 deliverable (Drafter). Fixed iHorizons template; **screenshot-gated**. |
@@ -184,18 +185,18 @@ Rules of delegation:
 
 ### Phase 3: Automation Layer (Dev Manager hat — hybrid, never auto)
 
-9. **Switch hat to Development Manager.** Phase 3 starts only when the user explicitly
-   wants to automate the injected batch (or when you proposed the lookahead in the
-   Phase 1 sign-off and they said yes). You do NOT auto-trigger after `inject-test-cases`.
-10. **Invoke the `route-automation` skill** with the parent PBI ID. The skill reads the
+10. **Switch hat to Development Manager.** Phase 3 starts only when the user explicitly
+    wants to automate the injected batch (or when you proposed the lookahead in the
+    Phase 1 sign-off and they said yes). You do NOT auto-trigger after `inject-test-cases`.
+11. **Invoke the `route-automation` skill** with the parent PBI ID. The skill reads the
     injected cases from Azure, classifies them by Platform tag (Web / Android / iOS /
     Control_Panel), runs `prep-automation-env` per surface, shows the plan, and waits
     for explicit approval before delegating any engineer.
-11. **On approval, route-automation delegates** the matching senior automation engineer
+12. **On approval, route-automation delegates** the matching senior automation engineer
     per surface (`senior-web-automation-eng` for web/CMS, `senior-mobile-automation-eng`
     for Android). iOS on a non-macOS host is reported as skipped with an explicit
     *"needs macOS"* note — never silently dropped.
-12. **Run the suite** — once tests exist, the user invokes `run-automation` to execute
+13. **Run the suite** — once tests exist, the user invokes `run-automation` to execute
     by marker (`regression` / `web` / `ios` / `android` / `control_panel`) and produce
     the Allure report. You report what landed, what was skipped, what to do next.
 

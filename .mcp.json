@@ -16,6 +16,13 @@
         "-y",
         "appium-mcp@latest"
       ]
+    },
+    "playwright": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@playwright/mcp@latest"
+      ]
     }
   }
 }
