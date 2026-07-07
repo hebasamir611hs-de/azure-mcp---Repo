@@ -73,6 +73,7 @@ from core.discovery import (
 )
 from core.reporting import (
     create_work_item_query,
+    ensure_bug_query_hierarchy,
     get_query_summary,
     get_test_outcome_summary,
     get_test_run_outcome_summary,
@@ -124,6 +125,7 @@ mcp.tool()(get_pbis_from_sprint)
 
 # ── Skill 2: Query Creation (core/reporting.py) ──────────────────────────────
 mcp.tool()(create_work_item_query)
+mcp.tool()(ensure_bug_query_hierarchy)
 
 # ── Skill 3: Query Summary (core/reporting.py) ───────────────────────────────
 mcp.tool()(get_query_summary)

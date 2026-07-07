@@ -113,8 +113,13 @@ def _build_repro_steps_html(
     repro_steps: Optional[List[str]],
     expected_result: str,
     actual_result: str,
+    error_message: str,
     run_url: str,
 ) -> str:
+    """Builds the Bug's ReproSteps HTML. Keeps the human-facing Expected/Actual
+    Result plain-English (no stack traces), and puts the full, untruncated raw
+    error under its own 'Automation Failure Root Cause' block so the technical
+    detail is preserved without polluting the parts a non-engineer reads."""
     if repro_steps:
         steps_html = "".join(f"<li>{s}</li>" for s in repro_steps)
     else:
@@ -123,11 +128,14 @@ def _build_repro_steps_html(
             "(see the linked Test Case for the manual steps).</li>"
         )
     run_line = f'<div><b>Automation Run:</b> <a href="{run_url}">{run_url}</a></div>' if run_url else ""
+    actual_display = actual_result or "The automated test failed — see Automation Failure Root Cause below."
     return (
         f"<div><b>Failing Test:</b> {test_name}</div>"
         f"<div><b>Steps to Reproduce:</b></div><ol>{steps_html}</ol>"
         f"<div><b>Expected Result:</b> {expected_result or 'Test should pass.'}</div>"
-        f"<div><b>Actual Result:</b> {actual_result}</div>"
+        f"<div><b>Actual Result:</b> {actual_display}</div>"
+        f"<div><b>Automation Failure Root Cause:</b></div>"
+        f"<div><pre>{error_message}</pre></div>"
         f"{run_line}"
     )
 
@@ -226,9 +234,15 @@ def create_bug(
     Args:
         test_case_id (int): Azure DevOps Test Case work item ID this failure traces to.
         test_name (str): The automated test's name/identifier (e.g. pytest node id).
-        error_message (str): The raw failure/assertion message.
-        expected_result (str, optional): What should have happened.
-        actual_result (str, optional): What actually happened (defaults to error_message).
+        error_message (str): The raw failure/assertion message (exception text, stack
+            trace fragment, etc). Never shown in the title — placed in full under
+            "Automation Failure Root Cause" in Repro Steps.
+        expected_result (str, optional): What should have happened, in plain English.
+        actual_result (str, optional): What actually happened, in plain English (e.g.
+            "No confirmation message appeared and the form was not cleared") — NOT the
+            raw error. Used verbatim (truncated to ~100 chars) as the Bug title's
+            summary, so a non-engineer can understand the failure at a glance. Falls
+            back to a truncated error_message only if omitted.
         repro_steps (list[str], optional): Steps to reproduce. Defaults to a generic
             "run the automated test" step referencing the Test Case.
         priority (int): 1=Critical ... 4=Low. Maps to Azure Severity (default 3).
@@ -259,16 +273,21 @@ def create_bug(
                 break
 
         severity = _SEVERITY_MAP.get(priority, "3 - Medium")
-        title = f"Automated test failure: {test_name} — {error_message[:80].strip()}"
+        # Title summary is plain-English (actual_result) so a non-engineer can read
+        # it at a glance -- never the raw exception/stack trace. Falls back to a
+        # truncated error_message only if the caller didn't supply actual_result.
+        title_summary = (actual_result or error_message).strip()[:100].strip()
+        title = f"Automated test failure: {test_name} — {title_summary}"
         if backlog_id:
             title = f"[{backlog_id}] {title}"
 
         repro_html = _build_repro_steps_html(
-            test_name, repro_steps, expected_result, actual_result or error_message, run_url
+            test_name, repro_steps, expected_result, actual_result, error_message, run_url
         )
 
         carried_tags = [t.strip() for t in tc_tags.split(";") if t.strip() in _CARRY_OVER_TAGS]
-        tag_parts = ["Automated", f"TC:{test_case_id}"] + carried_tags
+        pbi_tag = [f"PBI:{backlog_id}"] if backlog_id else []
+        tag_parts = ["Automated", f"TC:{test_case_id}"] + pbi_tag + carried_tags
         tags = "; ".join(dict.fromkeys(tag_parts))
 
         patch_doc = [
