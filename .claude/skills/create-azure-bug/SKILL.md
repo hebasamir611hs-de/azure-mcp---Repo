@@ -32,6 +32,12 @@ repro steps if known, a screenshot path if one was captured, and the run/report 
    standards file, build repro steps from what's known (or let `create_bug` fall back
    to its generic "run the automated test" step), then call:
    `create_bug(test_case_id, test_name, error_message, expected_result, actual_result, repro_steps, priority, screenshot_path, run_url)`.
+   **Always write `actual_result` (and `expected_result`) in plain English** — e.g.
+   "No confirmation message appeared and the form was not cleared" — never the raw
+   exception/stack trace. `actual_result` is used verbatim as the Bug title's summary,
+   so a non-engineer must be able to understand the failure from the title alone. The
+   raw `error_message` is never dropped — `create_bug` places it in full under
+   "Automation Failure Root Cause" in Repro Steps automatically.
 5. **Report back** — bug ID, URL, severity, whether tags applied, whether a screenshot
    was attached. If `create_bug` degraded (tags rejected, no screenshot found), say so
    plainly — don't silently report success.
