@@ -107,3 +107,72 @@ def test_create_bug_reports_provisioning_error_without_failing(mock_get_client, 
     assert result["bug_id"] == 6203
     assert result["query_provisioning"]["status"] == "error"
     mock_ensure_hierarchy.assert_not_called()
+
+
+@patch("core.bugs.ensure_bug_query_hierarchy")
+@patch("core.bugs.get_azure_client")
+def test_add_bug_occurrence_provisions_when_test_case_id_given(mock_get_client, mock_ensure_hierarchy, monkeypatch):
+    monkeypatch.setenv("AZURE_PROJECT", "Proj")
+
+    bug = MagicMock()
+    bug.fields = {"System.State": "Resolved"}
+
+    test_case = MagicMock()
+    test_case.fields = {"System.IterationPath": "Woqod\\Sprint 23"}
+    test_case.relations = [_make_relation("Microsoft.VSTS.Common.TestedBy-Reverse", 129744)]
+
+    backlog_item = MagicMock()
+    backlog_item.fields = {"System.Title": "contact us feature"}
+
+    client = MagicMock()
+    client.get_work_item.side_effect = [bug, test_case, backlog_item]
+    mock_get_client.return_value = client
+
+    mock_ensure_hierarchy.return_value = json.dumps({
+        "status": "success", "sprint_folder": "x", "general_query": {}, "automation_query": {}, "message": "ok",
+    })
+
+    result = json.loads(bugs.add_bug_occurrence(6188, "still failing", test_case_id=129779))
+
+    assert result["reopened"] is True
+    mock_ensure_hierarchy.assert_called_once_with("Sprint 23", "contact us feature", 129744)
+    assert result["query_provisioning"]["status"] == "success"
+
+
+@patch("core.bugs.ensure_bug_query_hierarchy")
+@patch("core.bugs.get_azure_client")
+def test_add_bug_occurrence_skips_provisioning_without_test_case_id(mock_get_client, mock_ensure_hierarchy, monkeypatch):
+    monkeypatch.setenv("AZURE_PROJECT", "Proj")
+
+    bug = MagicMock()
+    bug.fields = {"System.State": "Active"}
+    client = MagicMock()
+    client.get_work_item.return_value = bug
+    mock_get_client.return_value = client
+
+    result = json.loads(bugs.add_bug_occurrence(6188, "still failing"))
+
+    assert result["query_provisioning"]["status"] == "skipped"
+    mock_ensure_hierarchy.assert_not_called()
+
+
+@patch("core.bugs.ensure_bug_query_hierarchy")
+@patch("core.bugs.get_azure_client")
+def test_add_bug_occurrence_skips_when_context_unresolvable(mock_get_client, mock_ensure_hierarchy, monkeypatch):
+    monkeypatch.setenv("AZURE_PROJECT", "Proj")
+
+    bug = MagicMock()
+    bug.fields = {"System.State": "Active"}
+
+    test_case = MagicMock()
+    test_case.fields = {"System.IterationPath": "Woqod\\Sprint 23"}
+    test_case.relations = []  # no TestedBy-Reverse relation -> unresolvable
+
+    client = MagicMock()
+    client.get_work_item.side_effect = [bug, test_case]
+    mock_get_client.return_value = client
+
+    result = json.loads(bugs.add_bug_occurrence(6188, "still failing", test_case_id=129779))
+
+    assert result["query_provisioning"]["status"] == "skipped"
+    mock_ensure_hierarchy.assert_not_called()
