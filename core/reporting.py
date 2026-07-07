@@ -88,6 +88,23 @@ def _inject_columns(wiql: str, columns: List[str]) -> str:
 
 
 # ─────────────────────────────────────────────────────────────────────────────
+# QUERY HIERARCHY HELPERS (folders + idempotent query creation)
+# ─────────────────────────────────────────────────────────────────────────────
+
+_INVALID_NAME_CHARS = re.compile(r'[\\/:*?"<>|#]')
+
+
+def _sanitize_name(name: str, max_len: int = 200) -> str:
+    """Strips characters invalid in Azure DevOps query/folder names, collapses
+    whitespace, and truncates to max_len. Falls back to 'Unnamed' if empty."""
+    if not name:
+        return "Unnamed"
+    cleaned = _INVALID_NAME_CHARS.sub("-", name.strip())
+    cleaned = re.sub(r"\s+", " ", cleaned).strip()
+    return cleaned[:max_len] or "Unnamed"
+
+
+# ─────────────────────────────────────────────────────────────────────────────
 # SKILL 2: QUERY CREATION
 # ─────────────────────────────────────────────────────────────────────────────
 
