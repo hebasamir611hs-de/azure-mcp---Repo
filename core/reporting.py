@@ -104,6 +104,48 @@ def _sanitize_name(name: str, max_len: int = 200) -> str:
     return cleaned[:max_len] or "Unnamed"
 
 
+def _get_query_item(org_url: str, project: str, path: str) -> Optional[dict]:
+    """GETs a query or folder by path. Returns None if it doesn't exist (404)."""
+    encoded = quote(path.strip("/"), safe="/")
+    url = f"{org_url}/{project}/_apis/wit/queries/{encoded}?api-version=7.1"
+    resp = requests.get(url, headers=_auth_headers(), timeout=30)
+    if resp.status_code == 200:
+        return resp.json()
+    return None
+
+
+def _create_folder(org_url: str, project: str, parent_path: str, name: str) -> dict:
+    """Creates a new query folder under parent_path. Raises ValueError on failure."""
+    encoded_parent = quote(parent_path.strip("/"), safe="/")
+    url = f"{org_url}/{project}/_apis/wit/queries/{encoded_parent}?api-version=7.1"
+    resp = requests.post(
+        url, json={"name": name, "isFolder": True}, headers=_auth_headers(), timeout=30
+    )
+    if resp.status_code not in (200, 201):
+        try:
+            msg = resp.json().get("message", resp.text)
+        except ValueError:
+            msg = resp.text or f"HTTP {resp.status_code}"
+        raise ValueError(f"Failed to create folder '{name}' under '{parent_path}': {msg}")
+    return resp.json()
+
+
+def _ensure_folder_path(org_url: str, project: str, full_path: str) -> None:
+    """Ensures every segment of full_path exists as a query folder, creating any
+    that are missing. The first segment (e.g. 'Shared Queries') must already
+    exist — it cannot be auto-created."""
+    segments = [s for s in full_path.strip("/").split("/") if s]
+    current = ""
+    for seg in segments:
+        parent = current
+        current = f"{current}/{seg}" if current else seg
+        if _get_query_item(org_url, project, current) is not None:
+            continue
+        if not parent:
+            raise ValueError(f"Root folder '{seg}' does not exist and cannot be auto-created.")
+        _create_folder(org_url, project, parent, seg)
+
+
 # ─────────────────────────────────────────────────────────────────────────────
 # SKILL 2: QUERY CREATION
 # ─────────────────────────────────────────────────────────────────────────────
