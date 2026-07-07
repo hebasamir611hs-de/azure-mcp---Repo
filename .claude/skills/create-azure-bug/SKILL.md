@@ -26,19 +26,15 @@ repro steps if known, a screenshot path if one was captured, and the run/report 
    string is available, resolve it to a numeric ID before continuing (e.g. via the
    suite/PBI context already in hand) — `create_bug` needs the numeric ID.
 2. **Dedup check** — call `find_existing_bug(test_case_id)`.
-3. **If `exists: true`** — call `add_bug_occurrence(bug_id, error_message, run_url,
-   test_case_id)` (passing the resolved numeric Test Case ID from step 1 so the
-   Sprint/Feature bug-query hierarchy gets provisioned for this occurrence too).
+3. **If `exists: true`** — call `add_bug_occurrence(bug_id, error_message, run_url)`.
    Done; report which bug was updated and whether it was reopened from `Resolved`.
 4. **If `exists: false`** — map the Test Case's QA Priority to severity per the
    standards file, build repro steps from what's known (or let `create_bug` fall back
    to its generic "run the automated test" step), then call:
    `create_bug(test_case_id, test_name, error_message, expected_result, actual_result, repro_steps, priority, screenshot_path, run_url)`.
 5. **Report back** — bug ID, URL, severity, whether tags applied, whether a screenshot
-   was attached, and the `query_provisioning` outcome (created/existing/skipped/error
-   for the Sprint/Feature queries). If `create_bug` degraded (tags rejected, no
-   screenshot found) or query provisioning errored, say so plainly — don't silently
-   report success.
+   was attached. If `create_bug` degraded (tags rejected, no screenshot found), say so
+   plainly — don't silently report success.
 
 ## Hard boundary
 
@@ -51,3 +47,7 @@ repro steps if known, a screenshot path if one was captured, and the run/report 
   product defect, say so in the report but still log it; don't silently skip it.
 - **Does not generate the QA summary report.** That's `generate-summary-report`,
   invoked separately after all failures in a run have been processed.
+- **Does not provision saved queries.** The Sprint/Feature bug-query hierarchy is set
+  up once per PBI by `create-bug-queries`, right after that PBI's test cases are
+  written — not by this skill, and not per bug filed. A filed bug still shows up in
+  the right query on its own (WIQL matches the backlog ID already in its Title).

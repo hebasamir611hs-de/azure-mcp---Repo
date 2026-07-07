@@ -70,7 +70,8 @@ not improvise them inline. Invoke the matching skill instead:
 |---|---|---|
 | Full analysis of a PBI/feature | **`analyze-pbi`** | Phase 1. Reasoning only — produces all cases in chat, never injects. |
 | A quick / smoke / adhoc subset | **`quick-test-cases`** | Phase 1 subset. Output to chat, clearly not full coverage. |
-| Push an approved set to Azure DevOps | **`inject-test-cases`** | Phase 2. **Requires explicit user confirmation** — never auto-invoke. |
+| Push an approved set to Azure DevOps | **`inject-test-cases`** | Phase 2. **Requires explicit user confirmation** — never auto-invoke. Provisions the bug-query hierarchy for the PBI as its final step. |
+| Provision/backfill a PBI's bug-query hierarchy | **`create-bug-queries`** | Phase 2 infrastructure. Normally invoked automatically by `inject-test-cases`; call directly to backfill a pre-existing PBI. |
 | The client UAT document | **`build-uat-doc`** | Phase 2 deliverable. Cases must already be injected with `UAT` tags. |
 | Verify automation environment for a surface | **`prep-automation-env`** | Phase 3 gate. Checks MCP + host + framework readiness for `web`/`mobile`/`both`. Auto-scaffolds if missing. iOS on non-macOS = ACTIONABLE. |
 | Route injected cases to automation (hybrid) | **`route-automation`** | Phase 2.5 router. Reads Azure batch, classifies by Platform, runs `prep-automation-env`, waits for approval, delegates engineers. iOS on non-macOS is skipped with explicit warning. |
@@ -165,11 +166,13 @@ Rules of delegation:
    it.)
 6. **Confirm the parent PBI ID** — ask if not already provided.
 7. **Invoke the `inject-test-cases` skill** to push the approved, **classified** batch —
-   only after the user explicitly agrees. The skill owns the field/Tags mapping and the
-   MCP write calls (`execute_qa_feedback` preferred; `create_*_test_case` as fallback).
-   You do not call those MCP tools directly.
-8. **Report back** — how many TCs created, their Azure work item IDs, any errors. The
-   skill fixes and retries any rejected case — never silently skip.
+   only after the user explicitly agrees. The skill owns the field/Tags mapping, the
+   MCP write calls (`execute_qa_feedback` preferred; `create_*_test_case` as fallback),
+   and — as its final step — provisioning the PBI's bug-query hierarchy (via
+   `create-bug-queries`). You do not call those MCP tools directly.
+8. **Report back** — how many TCs created, their Azure work item IDs, any errors, and
+   the bug-query hierarchy outcome (created/existing/error). The skill fixes and
+   retries any rejected case — never silently skip.
 9. **Optional deliverables** — on request:
    - **Client UAT doc** — if cases are injected and `UAT`-tagged in Azure, invoke
      **`build-uat-doc`** (MCP, `Tag = UAT`). To build it from the approved *chat* set
@@ -211,6 +214,8 @@ Rules of delegation:
 |---|---|---|
 | **Read PBI** | `get_story_for_analysis`, `get_pbis_from_sprint` | Phase 1 only — feed the analysis |
 | **Inject approved TCs** | `execute_qa_feedback`, `create_english_test_case`, `create_arabic_test_case` | Phase 2 only — dumb transport, no analysis |
+| **Provision bug queries** | `ensure_bug_query_hierarchy` | Phase 2, once per PBI — called by `create-bug-queries` after test cases are written, never per bug filed |
+| **File/update bugs** | `find_existing_bug`, `create_bug`, `add_bug_occurrence` | Phase 3b only — dumb transport, dedup is the only decision |
 | **Post-injection audit** | `review_test_coverage`, `get_test_outcome_summary` | Optional Phase 2 follow-up |
 
 **MCP tools do not drive or influence analysis.** They read raw data in and write
