@@ -146,6 +146,37 @@ def _ensure_folder_path(org_url: str, project: str, full_path: str) -> None:
         _create_folder(org_url, project, parent, seg)
 
 
+def _ensure_query(
+    org_url: str,
+    project: str,
+    folder_path: str,
+    name: str,
+    wiql_where: str,
+    columns: Optional[List[str]] = None,
+) -> dict:
+    """Ensures a saved query exists at folder_path/name. If it already exists,
+    returns it untouched (status_action='existing'). If missing, creates it via
+    create_work_item_query (status_action='created' or 'error')."""
+    full_path = f"{folder_path}/{name}"
+    existing = _get_query_item(org_url, project, full_path)
+    if existing is not None:
+        html_link = (
+            existing.get("_links", {}).get("html", {}).get("href")
+            or f"{org_url}/{project}/_queries/query/{existing.get('id')}"
+        )
+        return {
+            "status_action": "existing",
+            "query_id": str(existing.get("id", "")),
+            "path": existing.get("path", full_path),
+            "url": html_link,
+        }
+
+    created_str = create_work_item_query(name, folder_path, wiql_where, columns)
+    created = json.loads(created_str)
+    created["status_action"] = "created" if created.get("status") == "success" else "error"
+    return created
+
+
 # ─────────────────────────────────────────────────────────────────────────────
 # SKILL 2: QUERY CREATION
 # ─────────────────────────────────────────────────────────────────────────────

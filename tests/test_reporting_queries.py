@@ -1,3 +1,4 @@
+import json
 from unittest.mock import patch, MagicMock
 
 import core.reporting as reporting
@@ -70,3 +71,47 @@ def test_ensure_folder_path_raises_if_root_missing(mock_get_item):
         assert False, "expected ValueError"
     except ValueError as e:
         assert "Nonexistent Root" in str(e)
+
+
+@patch("core.reporting._get_query_item")
+def test_ensure_query_returns_existing_without_creating(mock_get_item):
+    mock_get_item.return_value = {
+        "id": "existing-id",
+        "path": "Shared Queries/Bugs/Sprint bugs/Sprint 23/My Feature",
+        "_links": {"html": {"href": "https://org/proj/_queries/query/existing-id"}},
+    }
+    result = reporting._ensure_query(
+        "https://org", "Proj", "Shared Queries/Bugs/Sprint bugs/Sprint 23", "My Feature",
+        "[System.WorkItemType] = 'Bug'",
+    )
+    assert result["status_action"] == "existing"
+    assert result["query_id"] == "existing-id"
+
+
+@patch("core.reporting.create_work_item_query")
+@patch("core.reporting._get_query_item", return_value=None)
+def test_ensure_query_creates_when_missing(mock_get_item, mock_create_query):
+    mock_create_query.return_value = json.dumps({
+        "status": "success", "query_id": "new-id",
+        "path": "Shared Queries/Bugs/Sprint bugs/Sprint 23/My Feature",
+        "columns": [], "url": "https://org/proj/_queries/query/new-id", "message": "created",
+    })
+    result = reporting._ensure_query(
+        "https://org", "Proj", "Shared Queries/Bugs/Sprint bugs/Sprint 23", "My Feature",
+        "[System.WorkItemType] = 'Bug'",
+    )
+    assert result["status_action"] == "created"
+    assert result["query_id"] == "new-id"
+
+
+@patch("core.reporting.create_work_item_query")
+@patch("core.reporting._get_query_item", return_value=None)
+def test_ensure_query_reports_error_action_on_failure(mock_get_item, mock_create_query):
+    mock_create_query.return_value = json.dumps({
+        "status": "error", "error_type": "api", "http_status": 400, "error": "bad wiql",
+    })
+    result = reporting._ensure_query(
+        "https://org", "Proj", "Shared Queries/Bugs/Sprint bugs/Sprint 23", "My Feature",
+        "[System.WorkItemType] = 'Bug'",
+    )
+    assert result["status_action"] == "error"
