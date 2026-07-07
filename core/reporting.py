@@ -18,7 +18,7 @@ from typing import List, Optional, Dict, Any
 
 import requests
 
-from core.utils import handle_error
+from core.utils import get_azure_client, handle_error
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -105,12 +105,34 @@ def _sanitize_name(name: str, max_len: int = 200) -> str:
 
 
 def _get_query_item(org_url: str, project: str, path: str) -> Optional[dict]:
-    """GETs a query or folder by path. Returns None if it doesn't exist (404)."""
-    encoded = quote(path.strip("/"), safe="/")
-    url = f"{org_url}/{project}/_apis/wit/queries/{encoded}?api-version=7.1"
+    """Looks up a query or folder by path. Returns None if it doesn't exist.
+
+    For a top-level path (e.g. 'Shared Queries'), GETs it directly. For a
+    nested path, lists the PARENT folder's children ($depth=1) and matches by
+    name (case-insensitive) instead of GETting the full path directly — the
+    by-path GET endpoint has been observed to return a stale 404 for an item
+    that was created moments earlier, which would otherwise cause a duplicate
+    to be created on top of an existing query/folder.
+    """
+    segments = path.strip("/").split("/")
+    if len(segments) == 1:
+        encoded = quote(segments[0], safe="/")
+        url = f"{org_url}/{project}/_apis/wit/queries/{encoded}?api-version=7.1"
+        resp = requests.get(url, headers=_auth_headers(), timeout=30)
+        if resp.status_code == 200:
+            return resp.json()
+        return None
+
+    parent_path = "/".join(segments[:-1])
+    name = segments[-1]
+    encoded_parent = quote(parent_path, safe="/")
+    url = f"{org_url}/{project}/_apis/wit/queries/{encoded_parent}?$depth=1&api-version=7.1"
     resp = requests.get(url, headers=_auth_headers(), timeout=30)
-    if resp.status_code == 200:
-        return resp.json()
+    if resp.status_code != 200:
+        return None
+    for child in resp.json().get("children", []) or []:
+        if child.get("name", "").lower() == name.lower():
+            return child
     return None
 
 
@@ -491,12 +513,16 @@ def get_query_summary(
 _BUG_QUERY_COLUMNS = ["Id", "Title", "State", "Severity", "AssignedTo", "Tags"]
 
 
-def ensure_bug_query_hierarchy(sprint_name: str, feature_name: str, backlog_id: int) -> str:
+def ensure_bug_query_hierarchy(backlog_id: int) -> str:
     """
     Ensures the saved-query hierarchy for a feature's bugs exists in Azure DevOps:
 
         Shared Queries/Bugs/Sprint bugs/<sprint_name>/<feature_name>
         Shared Queries/Bugs/Sprint bugs/<sprint_name>/<feature_name> - Automation
+
+    Self-contained — fetches the backlog item's own System.Title (feature_name)
+    and System.IterationPath (sprint_name, last path segment) itself; the
+    caller only needs to know the PBI's work item ID.
 
     Idempotent — creates only what's missing; never overwrites an existing
     folder/query. The plain '<feature_name>' query is scoped to bugs for this
@@ -505,14 +531,12 @@ def ensure_bug_query_hierarchy(sprint_name: str, feature_name: str, backlog_id: 
     via the backlog_id number appearing in the Bug's Title (create_bug()
     prefixes every title with '[<backlog_id>] ...').
 
-    Called automatically by create_bug() / add_bug_occurrence() after a
-    successful write. Also safe to call standalone for backfill/repair.
+    Intended to be triggered once per PBI, after its test cases have been
+    written (see the create-bug-queries skill) — not per bug filed. Also safe
+    to call standalone/repeatedly for backfill/repair.
 
     Args:
-        sprint_name (str): Sprint/iteration name (e.g. last segment of the
-            Bug's IterationPath). Falls back to 'Unassigned' if empty.
-        feature_name (str): Title of the backlog item (PBI) the bug traces to.
-        backlog_id (int): The backlog item's work item ID.
+        backlog_id (int): The backlog item's (PBI's) work item ID.
 
     Returns:
         {
@@ -527,8 +551,14 @@ def ensure_bug_query_hierarchy(sprint_name: str, feature_name: str, backlog_id: 
         org_url = os.getenv("AZURE_ORG_URL", "").rstrip("/")
         project = os.getenv("AZURE_PROJECT")
 
-        safe_sprint = _sanitize_name(sprint_name) if sprint_name else "Unassigned"
-        safe_feature = _sanitize_name(feature_name) if feature_name else f"PBI {backlog_id}"
+        client = get_azure_client()
+        backlog_item = client.get_work_item(backlog_id)
+        feature_name = backlog_item.fields.get("System.Title") or f"PBI {backlog_id}"
+        iteration = backlog_item.fields.get("System.IterationPath") or ""
+        sprint_name = iteration.split("\\")[-1] if iteration else "Unassigned"
+
+        safe_sprint = _sanitize_name(sprint_name)
+        safe_feature = _sanitize_name(feature_name)
 
         sprint_folder = f"Shared Queries/Bugs/Sprint bugs/{safe_sprint}"
         _ensure_folder_path(org_url, project, sprint_folder)

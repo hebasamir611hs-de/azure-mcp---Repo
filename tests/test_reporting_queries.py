@@ -23,17 +23,41 @@ def test_sanitize_name_truncates_to_max_len():
 
 
 @patch("core.reporting.requests.get")
-def test_get_query_item_returns_none_on_404(mock_get):
+def test_get_query_item_root_path_returns_none_on_404(mock_get):
+    mock_get.return_value = MagicMock(status_code=404)
+    result = reporting._get_query_item("https://org", "Proj", "Shared Queries")
+    assert result is None
+
+
+@patch("core.reporting.requests.get")
+def test_get_query_item_root_path_returns_json_on_200(mock_get):
+    mock_get.return_value = MagicMock(status_code=200, json=lambda: {"id": "root-id", "name": "Shared Queries"})
+    result = reporting._get_query_item("https://org", "Proj", "Shared Queries")
+    assert result == {"id": "root-id", "name": "Shared Queries"}
+
+
+@patch("core.reporting.requests.get")
+def test_get_query_item_nested_path_returns_none_when_parent_missing(mock_get):
     mock_get.return_value = MagicMock(status_code=404)
     result = reporting._get_query_item("https://org", "Proj", "Shared Queries/Bugs")
     assert result is None
 
 
 @patch("core.reporting.requests.get")
-def test_get_query_item_returns_json_on_200(mock_get):
-    mock_get.return_value = MagicMock(status_code=200, json=lambda: {"id": "abc"})
+def test_get_query_item_nested_path_returns_none_when_not_in_children(mock_get):
+    mock_get.return_value = MagicMock(status_code=200, json=lambda: {"children": [{"name": "Other"}]})
     result = reporting._get_query_item("https://org", "Proj", "Shared Queries/Bugs")
-    assert result == {"id": "abc"}
+    assert result is None
+
+
+@patch("core.reporting.requests.get")
+def test_get_query_item_nested_path_matches_child_case_insensitively(mock_get):
+    mock_get.return_value = MagicMock(
+        status_code=200,
+        json=lambda: {"children": [{"name": "Bugs", "id": "abc"}, {"name": "Other", "id": "xyz"}]},
+    )
+    result = reporting._get_query_item("https://org", "Proj", "Shared Queries/bugs")
+    assert result == {"name": "Bugs", "id": "abc"}
 
 
 @patch("core.reporting.requests.post")
@@ -119,16 +143,27 @@ def test_ensure_query_reports_error_action_on_failure(mock_get_item, mock_create
 
 @patch("core.reporting._ensure_query")
 @patch("core.reporting._ensure_folder_path")
-def test_ensure_bug_query_hierarchy_builds_both_queries(mock_ensure_folder, mock_ensure_query, monkeypatch):
+@patch("core.reporting.get_azure_client")
+def test_ensure_bug_query_hierarchy_fetches_backlog_and_builds_both_queries(
+    mock_get_client, mock_ensure_folder, mock_ensure_query, monkeypatch
+):
     monkeypatch.setenv("AZURE_ORG_URL", "https://org")
     monkeypatch.setenv("AZURE_PROJECT", "Proj")
+
+    backlog_item = MagicMock()
+    backlog_item.fields = {"System.Title": "Contact Us", "System.IterationPath": "Woqod\\Sprint 23"}
+    client = MagicMock()
+    client.get_work_item.return_value = backlog_item
+    mock_get_client.return_value = client
+
     mock_ensure_query.side_effect = [
         {"status_action": "created", "query_id": "g1"},
         {"status_action": "created", "query_id": "a1"},
     ]
 
-    result = json.loads(reporting.ensure_bug_query_hierarchy("Sprint 23", "Contact Us", 129744))
+    result = json.loads(reporting.ensure_bug_query_hierarchy(129744))
 
+    client.get_work_item.assert_called_once_with(129744)
     assert result["status"] == "success"
     assert result["sprint_folder"] == "Shared Queries/Bugs/Sprint bugs/Sprint 23"
     mock_ensure_folder.assert_called_once_with(
@@ -146,13 +181,35 @@ def test_ensure_bug_query_hierarchy_builds_both_queries(mock_ensure_folder, mock
 
 @patch("core.reporting._ensure_query")
 @patch("core.reporting._ensure_folder_path")
+@patch("core.reporting.get_azure_client")
 def test_ensure_bug_query_hierarchy_defaults_missing_sprint_to_unassigned(
-    mock_ensure_folder, mock_ensure_query, monkeypatch
+    mock_get_client, mock_ensure_folder, mock_ensure_query, monkeypatch
 ):
     monkeypatch.setenv("AZURE_ORG_URL", "https://org")
     monkeypatch.setenv("AZURE_PROJECT", "Proj")
+
+    backlog_item = MagicMock()
+    backlog_item.fields = {"System.Title": "Contact Us", "System.IterationPath": ""}
+    client = MagicMock()
+    client.get_work_item.return_value = backlog_item
+    mock_get_client.return_value = client
+
     mock_ensure_query.side_effect = [{"status_action": "created"}, {"status_action": "created"}]
 
-    result = json.loads(reporting.ensure_bug_query_hierarchy("", "Contact Us", 129744))
+    result = json.loads(reporting.ensure_bug_query_hierarchy(129744))
 
     assert result["sprint_folder"] == "Shared Queries/Bugs/Sprint bugs/Unassigned"
+
+
+@patch("core.reporting.get_azure_client")
+def test_ensure_bug_query_hierarchy_reports_error_when_backlog_fetch_fails(mock_get_client, monkeypatch):
+    monkeypatch.setenv("AZURE_ORG_URL", "https://org")
+    monkeypatch.setenv("AZURE_PROJECT", "Proj")
+
+    client = MagicMock()
+    client.get_work_item.side_effect = RuntimeError("work item not found")
+    mock_get_client.return_value = client
+
+    result = json.loads(reporting.ensure_bug_query_hierarchy(999999))
+
+    assert "error" in result

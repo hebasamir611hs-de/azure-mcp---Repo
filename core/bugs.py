@@ -22,7 +22,6 @@ import requests
 from azure.devops.v7_1.work_item_tracking.models import JsonPatchOperation
 
 from core.utils import get_azure_client, handle_error
-from core.reporting import ensure_bug_query_hierarchy
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -310,18 +309,6 @@ def create_bug(
             else:
                 raise
 
-        query_provisioning = {"status": "skipped", "reason": "no backlog link found for this test case"}
-        if backlog_id:
-            try:
-                backlog_item = client.get_work_item(int(backlog_id))
-                feature_name = backlog_item.fields.get("System.Title") or f"PBI {backlog_id}"
-                sprint_name = iteration.split("\\")[-1] if iteration else "Unassigned"
-                query_provisioning = json.loads(
-                    ensure_bug_query_hierarchy(sprint_name, feature_name, int(backlog_id))
-                )
-            except Exception as e:
-                query_provisioning = {"status": "error", "error": str(e)}
-
         return json.dumps({
             "status": "created",
             "bug_id": new_bug.id,
@@ -333,7 +320,6 @@ def create_bug(
             "tags_applied": tags_applied,
             "tags": tags.split("; ") if tags else [],
             "screenshot_attached": attachment is not None,
-            "query_provisioning": query_provisioning,
             "message": f"Bug #{new_bug.id} created and linked to test case {test_case_id}.",
         }, indent=2)
 
@@ -345,41 +331,7 @@ def create_bug(
 # REPEAT FAILURE — UPDATE EXISTING BUG
 # ─────────────────────────────────────────────────────────────────────────────
 
-def _resolve_feature_context(client, test_case_id: int) -> Optional[dict]:
-    """Resolves (backlog_id, feature_name, sprint_name) for a Test Case, for
-    query provisioning on repeat-failure updates. Returns None if the Test
-    Case, its parent backlog item, or a usable title can't be resolved."""
-    try:
-        test_case = client.get_work_item(test_case_id, expand="Relations")
-    except Exception:
-        return None
-
-    backlog_id = None
-    for rel in (test_case.relations or []):
-        if rel.rel == "Microsoft.VSTS.Common.TestedBy-Reverse":
-            backlog_id = rel.url.rstrip("/").split("/")[-1]
-            break
-    if not backlog_id:
-        return None
-
-    try:
-        backlog_item = client.get_work_item(int(backlog_id))
-    except Exception:
-        return None
-
-    feature_name = backlog_item.fields.get("System.Title")
-    if not feature_name:
-        return None
-
-    iteration = test_case.fields.get("System.IterationPath") or ""
-    sprint_name = iteration.split("\\")[-1] if iteration else "Unassigned"
-
-    return {"backlog_id": int(backlog_id), "feature_name": feature_name, "sprint_name": sprint_name}
-
-
-def add_bug_occurrence(
-    bug_id: int, error_message: str, run_url: str = "", test_case_id: Optional[int] = None
-) -> str:
+def add_bug_occurrence(bug_id: int, error_message: str, run_url: str = "") -> str:
     """
     Appends a new-occurrence comment to an already-open Bug (found via
     find_existing_bug) instead of filing a duplicate. If the bug's current
@@ -390,12 +342,9 @@ def add_bug_occurrence(
         bug_id (int): The existing Bug's work item ID.
         error_message (str): The new failure's error/assertion message.
         run_url (str, optional): Link to the automation run / Allure report.
-        test_case_id (int, optional): The Test Case this bug traces to. When given,
-            also provisions the Sprint/Feature bug-query hierarchy for this
-            occurrence (see ensure_bug_query_hierarchy). Omit to skip provisioning.
 
     Returns:
-        {status, bug_id, reopened, query_provisioning, message}
+        {status, bug_id, reopened, message}
     """
     try:
         client = get_azure_client()
@@ -419,26 +368,10 @@ def add_bug_occurrence(
 
         client.update_work_item(patch_doc, bug_id, project=project)
 
-        query_provisioning = {"status": "skipped", "reason": "no test_case_id supplied"}
-        if test_case_id is not None:
-            ctx = _resolve_feature_context(client, test_case_id)
-            if ctx is None:
-                query_provisioning = {"status": "skipped", "reason": "could not resolve feature context"}
-            else:
-                try:
-                    query_provisioning = json.loads(
-                        ensure_bug_query_hierarchy(
-                            ctx["sprint_name"], ctx["feature_name"], ctx["backlog_id"]
-                        )
-                    )
-                except Exception as e:
-                    query_provisioning = {"status": "error", "error": str(e)}
-
         return json.dumps({
             "status": "updated",
             "bug_id": bug_id,
             "reopened": reopened,
-            "query_provisioning": query_provisioning,
             "message": (
                 f"Bug #{bug_id} updated with new occurrence."
                 + (" Reopened from Resolved." if reopened else "")
