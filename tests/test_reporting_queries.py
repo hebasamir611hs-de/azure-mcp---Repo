@@ -115,3 +115,44 @@ def test_ensure_query_reports_error_action_on_failure(mock_get_item, mock_create
         "[System.WorkItemType] = 'Bug'",
     )
     assert result["status_action"] == "error"
+
+
+@patch("core.reporting._ensure_query")
+@patch("core.reporting._ensure_folder_path")
+def test_ensure_bug_query_hierarchy_builds_both_queries(mock_ensure_folder, mock_ensure_query, monkeypatch):
+    monkeypatch.setenv("AZURE_ORG_URL", "https://org")
+    monkeypatch.setenv("AZURE_PROJECT", "Proj")
+    mock_ensure_query.side_effect = [
+        {"status_action": "created", "query_id": "g1"},
+        {"status_action": "created", "query_id": "a1"},
+    ]
+
+    result = json.loads(reporting.ensure_bug_query_hierarchy("Sprint 23", "Contact Us", 129744))
+
+    assert result["status"] == "success"
+    assert result["sprint_folder"] == "Shared Queries/Bugs/Sprint bugs/Sprint 23"
+    mock_ensure_folder.assert_called_once_with(
+        "https://org", "Proj", "Shared Queries/Bugs/Sprint bugs/Sprint 23"
+    )
+    assert mock_ensure_query.call_count == 2
+    general_call, automation_call = mock_ensure_query.call_args_list
+    assert general_call.args[3] == "Contact Us"
+    assert "PBI:129744" in general_call.args[4]
+    assert "NOT [System.Tags] CONTAINS 'Automated'" in general_call.args[4]
+    assert automation_call.args[3] == "Contact Us - Automation"
+    assert "PBI:129744" in automation_call.args[4]
+    assert "AND [System.Tags] CONTAINS 'Automated'" in automation_call.args[4]
+
+
+@patch("core.reporting._ensure_query")
+@patch("core.reporting._ensure_folder_path")
+def test_ensure_bug_query_hierarchy_defaults_missing_sprint_to_unassigned(
+    mock_ensure_folder, mock_ensure_query, monkeypatch
+):
+    monkeypatch.setenv("AZURE_ORG_URL", "https://org")
+    monkeypatch.setenv("AZURE_PROJECT", "Proj")
+    mock_ensure_query.side_effect = [{"status_action": "created"}, {"status_action": "created"}]
+
+    result = json.loads(reporting.ensure_bug_query_hierarchy("", "Contact Us", 129744))
+
+    assert result["sprint_folder"] == "Shared Queries/Bugs/Sprint bugs/Unassigned"

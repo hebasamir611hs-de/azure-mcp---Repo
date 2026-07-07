@@ -485,6 +485,84 @@ def get_query_summary(
 
 
 # ─────────────────────────────────────────────────────────────────────────────
+# SPRINT/FEATURE BUG QUERY HIERARCHY
+# ─────────────────────────────────────────────────────────────────────────────
+
+_BUG_QUERY_COLUMNS = ["Id", "Title", "State", "Severity", "AssignedTo", "Tags"]
+
+
+def ensure_bug_query_hierarchy(sprint_name: str, feature_name: str, backlog_id: int) -> str:
+    """
+    Ensures the saved-query hierarchy for a feature's bugs exists in Azure DevOps:
+
+        Shared Queries/Bugs/Sprint bugs/<sprint_name>/<feature_name>
+        Shared Queries/Bugs/Sprint bugs/<sprint_name>/<feature_name> - Automation
+
+    Idempotent — creates only what's missing; never overwrites an existing
+    folder/query. The plain '<feature_name>' query is scoped to bugs for this
+    backlog item WITHOUT the 'Automated' tag (manually-filed bugs); the
+    '- Automation' query is scoped to bugs WITH the 'Automated' tag. Both match
+    via a 'PBI:<backlog_id>' tag that create_bug() stamps on every automated bug.
+
+    Called automatically by create_bug() / add_bug_occurrence() after a
+    successful write. Also safe to call standalone for backfill/repair.
+
+    Args:
+        sprint_name (str): Sprint/iteration name (e.g. last segment of the
+            Bug's IterationPath). Falls back to 'Unassigned' if empty.
+        feature_name (str): Title of the backlog item (PBI) the bug traces to.
+        backlog_id (int): The backlog item's work item ID.
+
+    Returns:
+        {
+            "status": "success" | "error",
+            "sprint_folder": str,
+            "general_query": {...},
+            "automation_query": {...},
+            "message": str
+        }
+    """
+    try:
+        org_url = os.getenv("AZURE_ORG_URL", "").rstrip("/")
+        project = os.getenv("AZURE_PROJECT")
+
+        safe_sprint = _sanitize_name(sprint_name) if sprint_name else "Unassigned"
+        safe_feature = _sanitize_name(feature_name) if feature_name else f"PBI {backlog_id}"
+
+        sprint_folder = f"Shared Queries/Bugs/Sprint bugs/{safe_sprint}"
+        _ensure_folder_path(org_url, project, sprint_folder)
+
+        tag_filter = f"[System.Tags] CONTAINS 'PBI:{backlog_id}'"
+
+        general = _ensure_query(
+            org_url, project, sprint_folder, safe_feature,
+            f"[System.WorkItemType] = 'Bug' AND {tag_filter} AND NOT [System.Tags] CONTAINS 'Automated'",
+            _BUG_QUERY_COLUMNS,
+        )
+        automation = _ensure_query(
+            org_url, project, sprint_folder, f"{safe_feature} - Automation",
+            f"[System.WorkItemType] = 'Bug' AND {tag_filter} AND [System.Tags] CONTAINS 'Automated'",
+            _BUG_QUERY_COLUMNS,
+        )
+
+        return json.dumps({
+            "status": "success",
+            "sprint_folder": sprint_folder,
+            "general_query": general,
+            "automation_query": automation,
+            "message": (
+                f"Bug query hierarchy ready under '{sprint_folder}': "
+                f"'{safe_feature}' ({general.get('status_action')}), "
+                f"'{safe_feature} - Automation' ({automation.get('status_action')})."
+            ),
+        }, indent=2)
+
+    except Exception as e:
+        error_result = handle_error(e, "ensure_bug_query_hierarchy")
+        return json.dumps(error_result, indent=2)
+
+
+# ─────────────────────────────────────────────────────────────────────────────
 # TEST SUITE RESULTS & OUTCOMES
 # ─────────────────────────────────────────────────────────────────────────────
 
