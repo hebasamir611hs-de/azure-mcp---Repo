@@ -502,7 +502,8 @@ def ensure_bug_query_hierarchy(sprint_name: str, feature_name: str, backlog_id: 
     folder/query. The plain '<feature_name>' query is scoped to bugs for this
     backlog item WITHOUT the 'Automated' tag (manually-filed bugs); the
     '- Automation' query is scoped to bugs WITH the 'Automated' tag. Both match
-    via a 'PBI:<backlog_id>' tag that create_bug() stamps on every automated bug.
+    via the backlog_id number appearing in the Bug's Title (create_bug()
+    prefixes every title with '[<backlog_id>] ...').
 
     Called automatically by create_bug() / add_bug_occurrence() after a
     successful write. Also safe to call standalone for backfill/repair.
@@ -532,16 +533,16 @@ def ensure_bug_query_hierarchy(sprint_name: str, feature_name: str, backlog_id: 
         sprint_folder = f"Shared Queries/Bugs/Sprint bugs/{safe_sprint}"
         _ensure_folder_path(org_url, project, sprint_folder)
 
-        tag_filter = f"[System.Tags] CONTAINS 'PBI:{backlog_id}'"
+        title_filter = f"[System.Title] CONTAINS '{backlog_id}'"
 
         general = _ensure_query(
             org_url, project, sprint_folder, safe_feature,
-            f"[System.WorkItemType] = 'Bug' AND {tag_filter} AND NOT [System.Tags] CONTAINS 'Automated'",
+            f"[System.WorkItemType] = 'Bug' AND {title_filter} AND NOT [System.Tags] CONTAINS 'Automated'",
             _BUG_QUERY_COLUMNS,
         )
         automation = _ensure_query(
             org_url, project, sprint_folder, f"{safe_feature} - Automation",
-            f"[System.WorkItemType] = 'Bug' AND {tag_filter} AND [System.Tags] CONTAINS 'Automated'",
+            f"[System.WorkItemType] = 'Bug' AND {title_filter} AND [System.Tags] CONTAINS 'Automated'",
             _BUG_QUERY_COLUMNS,
         )
 

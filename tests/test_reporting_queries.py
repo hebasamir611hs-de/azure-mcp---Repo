@@ -137,10 +137,10 @@ def test_ensure_bug_query_hierarchy_builds_both_queries(mock_ensure_folder, mock
     assert mock_ensure_query.call_count == 2
     general_call, automation_call = mock_ensure_query.call_args_list
     assert general_call.args[3] == "Contact Us"
-    assert "PBI:129744" in general_call.args[4]
+    assert "[System.Title] CONTAINS '129744'" in general_call.args[4]
     assert "NOT [System.Tags] CONTAINS 'Automated'" in general_call.args[4]
     assert automation_call.args[3] == "Contact Us - Automation"
-    assert "PBI:129744" in automation_call.args[4]
+    assert "[System.Title] CONTAINS '129744'" in automation_call.args[4]
     assert "AND [System.Tags] CONTAINS 'Automated'" in automation_call.args[4]
 
 
