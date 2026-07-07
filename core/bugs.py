@@ -22,6 +22,7 @@ import requests
 from azure.devops.v7_1.work_item_tracking.models import JsonPatchOperation
 
 from core.utils import get_azure_client, handle_error
+from core.reporting import ensure_bug_query_hierarchy
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -268,7 +269,8 @@ def create_bug(
         )
 
         carried_tags = [t.strip() for t in tc_tags.split(";") if t.strip() in _CARRY_OVER_TAGS]
-        tag_parts = ["Automated", f"TC:{test_case_id}"] + carried_tags
+        pbi_tag = [f"PBI:{backlog_id}"] if backlog_id else []
+        tag_parts = ["Automated", f"TC:{test_case_id}"] + pbi_tag + carried_tags
         tags = "; ".join(dict.fromkeys(tag_parts))
 
         patch_doc = [
@@ -308,6 +310,18 @@ def create_bug(
             else:
                 raise
 
+        query_provisioning = {"status": "skipped", "reason": "no backlog link found for this test case"}
+        if backlog_id:
+            try:
+                backlog_item = client.get_work_item(int(backlog_id))
+                feature_name = backlog_item.fields.get("System.Title") or f"PBI {backlog_id}"
+                sprint_name = iteration.split("\\")[-1] if iteration else "Unassigned"
+                query_provisioning = json.loads(
+                    ensure_bug_query_hierarchy(sprint_name, feature_name, int(backlog_id))
+                )
+            except Exception as e:
+                query_provisioning = {"status": "error", "error": str(e)}
+
         return json.dumps({
             "status": "created",
             "bug_id": new_bug.id,
@@ -319,6 +333,7 @@ def create_bug(
             "tags_applied": tags_applied,
             "tags": tags.split("; ") if tags else [],
             "screenshot_attached": attachment is not None,
+            "query_provisioning": query_provisioning,
             "message": f"Bug #{new_bug.id} created and linked to test case {test_case_id}.",
         }, indent=2)
 
