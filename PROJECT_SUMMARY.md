@@ -30,13 +30,19 @@ Phase 1 (chat only)           Phase 2 (Azure + deliverables)        Phase 3 (./a
 ─────────────────────         ────────────────────────────         ────────────────────────
 analyze-pbi  (Normal/Deep)    Automation/Manual classify           prep-automation-env
 quick-test-cases              inject-test-cases  →  Azure         route-automation
-qa-engineer                   build-uat-doc (RTL/LTR)              automate-test-case
-                              build-chat-uat-doc                   run-automation
-SIGN-OFF GATE                 create-user-manual                   senior-web-eng
-                              generate-summary-report              senior-mobile-eng
-                              drafter                              SUITE + Allure
-                              SIGN-OFF GATE                        report
-                                                                   
+qa-engineer                   └─ create-bug-queries (auto)         automate-test-case
+                              build-uat-doc (RTL/LTR)              run-automation
+SIGN-OFF GATE                 build-chat-uat-doc                   senior-web-eng
+                              create-user-manual                   senior-mobile-eng
+                              generate-summary-report              SUITE + Allure report
+                              drafter                                     │ failures?
+                              SIGN-OFF GATE                               ▼
+                                                          Phase 3b (auto — no gate)
+                                                          ─────────────────────────
+                                                          quality-control-engineer
+                                                          create-azure-bug → Azure Bugs
+                                                          generate-summary-report (HTML)
+
   QA Manager hat ─────────────────────────────────────►  hat switch  ►──── Dev Manager hat
 ```
 
@@ -44,6 +50,8 @@ SIGN-OFF GATE                 create-user-manual                   senior-web-en
 - Phase 1 never writes to Azure. The set lives in chat until the user signs off.
 - Phase 2 never invents cases — it transports and decorates.
 - Phase 3 never re-judges coverage — the Azure set is the contract.
+- Phase 3b never fixes tests or filters failures — every failure gets logged
+  (dedup, not a human, prevents duplicates). It is the **only ungated writer**.
 
 ---
 
@@ -51,42 +59,48 @@ SIGN-OFF GATE                 create-user-manual                   senior-web-en
 
 | Component | Count | Where |
 |---|---|---|
-| Skills (procedures) | 13 | `.claude/skills/` |
-| Sub-agents | 4 | `.claude/agents/` |
+| Skills (procedures) | 15 | `.claude/skills/` |
+| Sub-agents | 5 | `.claude/agents/` |
 | Context files (knowledge) | 5 + assets — **per-project local override supported** | `.claude/context/` |
 | MCP servers registered | 3 (azure-devops, appium, playwright) | `.mcp.json` |
 | Slash commands | 2 (qa-mode, dev-mode) | `.claude/commands/` |
-| Core Python modules | 7 | `core/` |
-| **Unit tests (pytest)** | **59** | `tests/` |
+| Core Python modules | 8 (incl. `bugs.py` — Phase 3b) | `core/` |
+| **Unit tests (pytest)** | **92** | `tests/` |
 | Live E2E harness | 1 (`smoke_e2e.py` — inject → read-back → cleanup) | `scratch/` |
 | Documentation | README, CLAUDE.md, this file | repo root |
 
 ---
 
-## The 13 skills
+## The 15 skills
 
 **Phase 1 — Analysis & Generation**
 1. `analyze-pbi` — full Phase-1 coverage in Normal (default) or Deep mode
 2. `quick-test-cases` — tight prioritized subset
 
 **Phase 2 — Classification, Injection & Deliverables**
-3. `inject-test-cases` — push the approved, classified set to Azure
-4. `build-uat-doc` — client UAT `.docx` from Azure suite (RTL for AR, LTR for EN)
-5. `build-chat-uat-doc` — client UAT `.docx` from the chat set (no Azure read)
-6. `create-user-manual` — end-user feature manual (iHorizons template, screenshot-gated)
-7. `generate-summary-report` — HTML quality summary
+3. `inject-test-cases` — push the approved, classified set to Azure (+ provisions the PBI's bug-query hierarchy as its final step)
+4. `create-bug-queries` — idempotent per-PBI bug-query hierarchy (auto from inject; backfill on demand)
+5. `build-uat-doc` — client UAT `.docx` from Azure suite (RTL for AR, LTR for EN)
+6. `build-chat-uat-doc` — client UAT `.docx` from the chat set (no Azure read)
+7. `create-user-manual` — end-user feature manual (iHorizons template, screenshot-gated)
+8. `generate-summary-report` — HTML quality summary (also renders the Phase 3b payload)
 
 **Phase 3 — Automation Layer**
-8. `prep-automation-env` — verify MCP + host + framework readiness; auto-scaffold
-9. `route-automation` — Phase 2.5 hybrid router; reads Azure, asks before delegating
-10. `scaffold-automation-framework` — generate `./automation/` (web / mobile / both)
-11. `extract-locators` — pull real locators from the live app
-12. `automate-test-case` — translate one approved Automation case to pytest
-13. `run-automation` — execute pytest suite + Allure report
+9. `prep-automation-env` — verify MCP + host + framework readiness; auto-scaffold
+10. `route-automation` — Phase 2.5 hybrid router; reads Azure, asks before delegating
+11. `scaffold-automation-framework` — generate `./automation/` (web / mobile / both)
+12. `extract-locators` — pull real locators from the live app
+13. `automate-test-case` — translate one approved Automation case to pytest
+14. `run-automation` — execute pytest suite + Allure report
+
+**Phase 3b — Bug Reporting on Failure (auto, no gate)**
+15. `create-azure-bug` — one Bug per failed automated test; dedup via `TC:<id>` tag
+    (`find_existing_bug` → `create_bug` or `add_bug_occurrence`); plain-English titles,
+    raw error preserved in Repro Steps
 
 ---
 
-## The 4 sub-agents
+## The 5 sub-agents
 
 | Agent | Layer | Writes code? |
 |---|---|---|
@@ -94,6 +108,7 @@ SIGN-OFF GATE                 create-user-manual                   senior-web-en
 | `drafter` | Reasoning + `.docx` build + Playwright screenshots | No (only documents) |
 | `senior-web-automation-eng` | Reasoning + Playwright + pytest code + Azure read | **Yes** |
 | `senior-mobile-automation-eng` | Reasoning + Appium + pytest code + Azure read | **Yes** |
+| `quality-control-engineer` | Reasoning + Allure extraction only (no MCP, no bug-filing decisions) | No |
 
 ---
 
@@ -146,8 +161,10 @@ User invokes: `Analyze PBI 12345` (Normal) or `Analyze PBI 12345 deep` (Deep).
 | Coverage review sees MCP-injected cases (TestedBy links) | ✅ Fixed July 2026 |
 | Tag-taxonomy classification in analytics (`classification_source` per case) | ✅ Fixed July 2026 |
 | Description-only PBIs (no AC) flow through flagged, with mandatory assumptions | ✅ Policy, July 2026 |
-| Unit tests (59) + live smoke E2E harness | ✅ July 2026 |
-| **Azure result post-back from automation runs** | 🔜 Deferred — planned for the next PR |
+| Unit tests (92) + live smoke E2E harness | ✅ July 2026 |
+| Plain-English bug titles enforced in code (title guard in `create_bug`) | ✅ July 2026 — team review feedback |
+| **Automated bug filing on failed runs (Phase 3b)** | ✅ Merged July 2026 — dedup via `TC:<id>`, auto (no gate), per-PBI query hierarchy |
+| **Azure test-result post-back from automation runs** | 🔜 Deferred — planned for the next PR |
 | iOS automation on macOS host | ✅ (needs Xcode + xcuitest driver) |
 | iOS automation on Windows / Linux host | ❌ Not possible — reported as ACTIONABLE |
 | Android automation on Windows | ✅ |
@@ -181,6 +198,8 @@ classification.
 ---
 
 *Last updated July 2026 — post-review hardening (P1 link-type fix, taxonomy
-classifier, multi-project support, AC-optional discovery, pytest suite). For the full
-architecture, see `README.md`. For the orchestrator's behavior rules, see `CLAUDE.md`.
-Review & verification records: `docs/`.*
+classifier, multi-project support, AC-optional discovery, pytest suite) + the
+**Bug Reporting on Failure (Phase 3b)** merge (quality-control-engineer,
+create-azure-bug, create-bug-queries, core/bugs.py — see `BUG_REPORTING_FEATURE.md`).
+For the full architecture, see `README.md`. For the orchestrator's behavior rules,
+see `CLAUDE.md`. Review & verification records: `docs/`.*

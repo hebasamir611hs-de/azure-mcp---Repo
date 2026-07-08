@@ -3,6 +3,11 @@
 .env.*
 !.env.example
 mcp-config.json
+
+# MCP registry is per-machine (absolute paths kept ruining pulls — team decision).
+# The canonical template is committed as .mcp.json.example; copy it on first clone.
+.mcp.json
+!.mcp.json.example
 **/credentials*.json
 **/credentials*.yaml
 **/credentials*.yml
