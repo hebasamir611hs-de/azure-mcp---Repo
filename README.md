@@ -8,8 +8,12 @@ automation, injecting cases into Azure DevOps, generating client UAT documents a
 end-user feature manuals, and — at the end of the loop — preparing and running
 automated tests through Playwright (web) and Appium (mobile) MCP servers.
 
-> Built for the WOQOD QA team. Project/business specifics live in
-> `.claude/context/` — swap those files to retarget the engine to a different project.
+> Built by the iHorizons QA team. The engine is **project-agnostic**: all
+> project/business specifics live in `.claude/context/` — swap those two files to
+> retarget (currently serving multiple projects: WOQOD, Asiacell eCommerce Platform,
+> Awqaf Smart Khotba). On writes, the MCP derives the Azure team project from the
+> **parent PBI itself** (`System.TeamProject`), so one org-level PAT can serve all
+> projects; `AZURE_PROJECT` in `.env` scopes the sprint-level read queries.
 
 ---
 
@@ -65,11 +69,19 @@ flowchart TB
         SME[senior-mobile-automation-eng]
     end
 
-    subgraph MCPs["MCP Servers"]
+    subgraph MCPs["MCP Servers (.mcp.json)"]
         AZ[azure-devops MCP]
         AP_MCP[appium MCP]
         PW_MCP[playwright MCP]
     end
+
+    subgraph Quality["Reliability Layer"]
+        TESTS["tests/ — pytest suite (59 tests)<br/>link-types · tag classifier · validation gate"]
+        SMOKE["scratch/smoke_e2e.py<br/>live E2E: inject → read-back → cleanup"]
+    end
+
+    TESTS -.guards.-> AZ
+    SMOKE -.verifies.-> AZ
 
     User --> Brain
     QM --> Phase1
@@ -162,7 +174,7 @@ Lifecycle / Service / Platform / Category; the **Automation engineer** assigns
 | 0 — Provenance | `Ai_MCP_Injected` | MCP (automatic) |
 | 1a — Lifecycle | `UAT`, `Regression` | QA Engineer |
 | 1b — Execution method | `Automation`, `Manual` (exactly one) | **Automation Engineer** (pre-injection pass) |
-| 2 — Service | `TAG`, `FAHES`, `BOOK`, `QJET`, `CMS` | QA Engineer |
+| 2 — Service | **Per-project codes** from the active `*-standards.md` (e.g. WOQOD: `TAG`/`FAHES`/`BOOK`; Asiacell: `CHECKOUT`/`SIM`/`CATALOG`/`PAYMENT`…) | QA Engineer |
 | 3 — Platform | `Web`, `IOS`, `Android`, `Control_Panel` | QA Engineer |
 | 4 — Category | UI, Functional-High, Functional-Low, etc. | QA Engineer |
 | 5 — Business | Optional keyword (e.g. `Payment`) | QA Engineer |
@@ -212,7 +224,7 @@ re-run subset within it.
 |---|---|---|
 | `azure-devops` | Read PBIs, inject test cases, query coverage / outcomes, read suite cases for automation backlog | ✅ Active |
 | `appium` | Mobile UI inspection + locator extraction (`appium-mcp@latest` via npx) | ✅ Active |
-| `playwright` | Web UI inspection + screenshot capture for user manuals; web automation | ✅ Allowlisted in settings |
+| `playwright` | Web UI inspection + screenshot capture for user manuals; web automation (`@playwright/mcp@latest` via npx) | ✅ Active — registered in `.mcp.json` |
 
 ---
 
@@ -220,8 +232,8 @@ re-run subset within it.
 
 | File | Owns |
 |---|---|
-| `.claude/context/woqod-background.md` | Project / business facts: services, surfaces, roles |
-| `.claude/context/woqod-standards.md` | QA standards: IDs, priorities, tag taxonomy (including Axis 1b — Automation/Manual) |
+| `.claude/context/woqod-background.md` | Project / business facts: services, surfaces, roles. **May carry a local per-machine override** for a different project (marked with a `⚠️ LOCAL OVERRIDE` banner + `git skip-worktree`) — the filename is stable, the content is per-project |
+| `.claude/context/woqod-standards.md` | QA standards: IDs, priorities, tag taxonomy (including Axis 1b — Automation/Manual), test-case authoring language policy (follows the PBI's language). Same local-override mechanism |
 | `.claude/context/analysis-framework.md` | The 8 test categories + the 4-step edge methodology + Normal/Deep mode definitions |
 | `.claude/context/test-case-template.md` | Field-level test case format + Azure mapping |
 | `.claude/context/automation-standards.md` | Automation framework contract: structure, locator strategy, wrapper rules, Allure |
@@ -278,15 +290,19 @@ For a deep analysis: `Analyze PBI 123456 deep`.
 azure-mcp/
 ├─ server.py                      # MCP entry point (FastMCP)
 ├─ core/                          # MCP business logic
-│  ├─ analysis.py
-│  ├─ discovery.py
-│  ├─ engines.py
+│  ├─ analysis.py                 # coverage review + QA dashboard (tag-taxonomy classifier)
+│  ├─ discovery.py                # sprint PBI discovery (AC-optional validation gate)
+│  ├─ engines.py                  # TC creation engines (multi-project: project from parent PBI)
 │  ├─ output_manager.py
 │  ├─ reporting.py
 │  ├─ test_planner.py
-│  └─ utils.py
+│  └─ utils.py                    # shared: validators, classify_tc_from_tags, bilingual priority
+├─ tests/                         # pytest suite (59 tests) — run: pytest tests/ -q
+├─ scratch/                       # git-ignored: smoke_e2e.py + discovery source data
+├─ deliverables/                  # git-ignored: generated client .docx files
+├─ docs/                          # git-ignored: review/verification records
 ├─ requirements.txt
-├─ .mcp.json                      # MCP server registry (azure-devops + appium)
+├─ .mcp.json                      # MCP registry (azure-devops + appium + playwright)
 ├─ CLAUDE.md                      # QA Manager prompt / orchestration rules
 ├─ PROJECT_SUMMARY.md             # Compact executive summary of the system
 ├─ README.md                      # This file
@@ -303,7 +319,67 @@ is **git-ignored** — it is not committed to this repo.
 
 ---
 
-## What this PR adds
+## Changelog — July 2026 hardening (post-review fixes)
+
+A full senior review of the engine surfaced and fixed three P1 bugs plus a set of
+reliability gaps. All fixes are covered by the new pytest suite and were verified
+end-to-end against live Azure DevOps (smoke E2E + a full production sprint run of
+11 PBIs / 400+ injected cases on the Asiacell Headless Implementation sprint).
+
+**P1 bug fixes**
+- **Link-type mismatch (blindness bug):** injection links TC → PBI via
+  `TestedBy-Reverse`, but `review_test_coverage` / `generate_qa_report` only read
+  `Hierarchy` links — coverage review was blind to the MCP's own injected cases.
+  Both now accept **TestedBy + Hierarchy** (deduped).
+- **Analytics on the wrong tag model:** classification assumed legacy attribute tags
+  (`positive`/`Functional`/…) that the unified tagging model no longer emits. New
+  shared classifier (`classify_tc_from_tags`) understands the current taxonomy
+  (Axis-4 Category + Axis-1b Automation/Manual), falls back to legacy tags, then
+  title inference — and reports its source per case (`classification_source`).
+- **Missing tags in coverage payload:** `review_test_coverage` now returns each
+  case's `tags` (required by `route-automation` for Platform classification) plus
+  `category_coverage` per Axis-4 category.
+
+**Reliability & correctness**
+- Multi-project support: TC creation derives the Azure **team project from the
+  parent PBI** (`System.TeamProject`) — fixes TF401346 when the parent lives in a
+  different project than `AZURE_PROJECT`.
+- Sprint discovery validation relaxed by policy: **Description is the hard
+  requirement; missing AC no longer skips a PBI** — it is flagged
+  (`has_ac=false`, `no_ac_count`, mandatory-assumptions note) so analysis proceeds
+  from the Description with explicit assumptions at the review gate.
+- `execution_type` vocabulary normalized (`Automation` tag ⇄ `Automated` attribute)
+  — no more injection rejects from the naming mismatch.
+- TF401289 tag-permission fallback unified across both creation paths
+  (`tags_applied` reported per case).
+- Reporting: work-item batch fetch now **fails loudly** instead of silently
+  undercounting; suite test-points **paginated** (no truncation at 2000); all
+  reporting tools return dicts (one contract).
+- `assess_priority` is bilingual — Arabic money/access keywords (دفع، شحن، رصيد،
+  دخول…) now hit P1 like their English equivalents.
+- `review_test_coverage`'s instructions are informational-only and **mode-aware** —
+  the tool no longer prescribes creating cases for out-of-scope (Normal-mode) gaps.
+
+**Test infrastructure (new)**
+- `tests/` — 59 pytest tests: XML round-trip, validators, exec-type normalization,
+  bilingual priority, tag classifier (current + legacy + inference), link-type
+  regression tests, TF401289 fallback, discovery validation gate.
+- `scratch/smoke_e2e.py` — live E2E harness: inject 2 tagged smoke cases →
+  read-back through the full pipeline → cleanup.
+
+**Config & docs**
+- `playwright` MCP registered in `.mcp.json` (drafter screenshots + web automation).
+- Machine-specific permissions moved out of shared `.claude/settings.json`.
+- CLAUDE.md: Phase-3 steps renumbered (10–13), `build-chat-uat-doc` added to the
+  skills router.
+- Context files support a **local per-project override** (banner + `git
+  skip-worktree`) so one shared repo serves multiple projects without collisions.
+- Standards: test-case authoring language follows the PBI (EN PBI → EN cases, AR →
+  AR); Kurdish is tested as a UI locale, never used as an authoring language.
+
+---
+
+## What the previous PR added (history)
 
 This PR brings the Appium MCP integration and the Phase-3 orchestration layer that
 makes the system runnable end-to-end on mobile. It also merges cleanly with the
@@ -367,4 +443,4 @@ Carried over from PR #4 (Analysis Modes + create-user-manual):
 
 ## License
 
-Internal — WOQOD QA team.
+Internal — iHorizons QA team (multi-project: WOQOD · Asiacell eCommerce · Awqaf Smart Khotba).

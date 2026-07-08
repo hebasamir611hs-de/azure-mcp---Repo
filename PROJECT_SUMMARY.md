@@ -53,10 +53,12 @@ SIGN-OFF GATE                 create-user-manual                   senior-web-en
 |---|---|---|
 | Skills (procedures) | 13 | `.claude/skills/` |
 | Sub-agents | 4 | `.claude/agents/` |
-| Context files (knowledge) | 5 + assets | `.claude/context/` |
-| MCP servers registered | 3 (azure-devops, appium, playwright) | `.mcp.json` + `.claude/settings.json` |
+| Context files (knowledge) | 5 + assets — **per-project local override supported** | `.claude/context/` |
+| MCP servers registered | 3 (azure-devops, appium, playwright) | `.mcp.json` |
 | Slash commands | 2 (qa-mode, dev-mode) | `.claude/commands/` |
 | Core Python modules | 7 | `core/` |
+| **Unit tests (pytest)** | **59** | `tests/` |
+| Live E2E harness | 1 (`smoke_e2e.py` — inject → read-back → cleanup) | `scratch/` |
 | Documentation | README, CLAUDE.md, this file | repo root |
 
 ---
@@ -102,7 +104,7 @@ SIGN-OFF GATE                 create-user-manual                   senior-web-en
 | 0 — Provenance | `Ai_MCP_Injected` | MCP (auto) |
 | 1a — Lifecycle | `UAT`, `Regression` | QA Engineer |
 | **1b — Execution method** | `Automation` / `Manual` (exactly one) | **Automation Engineer** (pre-injection) |
-| 2 — Service | `TAG` / `FAHES` / `BOOK` / `QJET` / `CMS` | QA Engineer |
+| 2 — Service | Per-project codes from the active standards file (WOQOD: `TAG`/`FAHES`/… · Asiacell: `CHECKOUT`/`SIM`/`PAYMENT`/…) | QA Engineer |
 | 3 — Platform | `Web` / `IOS` / `Android` / `Control_Panel` | QA Engineer |
 | 4 — Category | UI / Functional-High / Functional-Low / etc. | QA Engineer |
 | 5 — Business | Optional keyword | QA Engineer |
@@ -130,7 +132,7 @@ User invokes: `Analyze PBI 12345` (Normal) or `Analyze PBI 12345 deep` (Deep).
 |---|---|---|
 | `azure-devops` | Read PBI, inject cases, read suite for automation backlog | ✅ Active |
 | `appium` | Mobile UI inspection, locator extraction, app screenshots | ✅ Active |
-| `playwright` | Web UI inspection, screenshots for user manuals, web automation | ✅ Allowlisted |
+| `playwright` | Web UI inspection, screenshots for user manuals, web automation | ✅ Active — in `.mcp.json` |
 
 ---
 
@@ -139,8 +141,12 @@ User invokes: `Analyze PBI 12345` (Normal) or `Analyze PBI 12345 deep` (Deep).
 | Capability | Status |
 |---|---|
 | Azure PBI read | ✅ |
-| Azure case injection | ✅ |
+| Azure case injection | ✅ (project derived from parent PBI — multi-project org supported) |
 | Azure suite read (for automation backlog) | ✅ |
+| Coverage review sees MCP-injected cases (TestedBy links) | ✅ Fixed July 2026 |
+| Tag-taxonomy classification in analytics (`classification_source` per case) | ✅ Fixed July 2026 |
+| Description-only PBIs (no AC) flow through flagged, with mandatory assumptions | ✅ Policy, July 2026 |
+| Unit tests (59) + live smoke E2E harness | ✅ July 2026 |
 | **Azure result post-back from automation runs** | 🔜 Deferred — planned for the next PR |
 | iOS automation on macOS host | ✅ (needs Xcode + xcuitest driver) |
 | iOS automation on Windows / Linux host | ❌ Not possible — reported as ACTIONABLE |
@@ -164,5 +170,17 @@ Start with: `Analyze PBI <id>` for the default Normal mode, or add `deep` for De
 
 ---
 
-*Last updated as part of the Appium MCP integration + orchestration PR. For the full
-architecture, see `README.md`. For the orchestrator's behavior rules, see `CLAUDE.md`.*
+## Proven in production
+
+July 2026: full sprint run on **Asiacell eCommerce Platform \ Headless Implementation**
+— 11 PBIs analyzed (10 of them Description-only, no AC), classified, and injected
+(~400 cases, e.g. Guest Checkout: 40/40, 30 Automation / 10 Manual, 0 rejected),
+then verified back through `review_test_coverage` with 100% tag-sourced
+classification.
+
+---
+
+*Last updated July 2026 — post-review hardening (P1 link-type fix, taxonomy
+classifier, multi-project support, AC-optional discovery, pytest suite). For the full
+architecture, see `README.md`. For the orchestrator's behavior rules, see `CLAUDE.md`.
+Review & verification records: `docs/`.*

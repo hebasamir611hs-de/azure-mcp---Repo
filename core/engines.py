@@ -127,9 +127,9 @@ def _create_test_case(
             return {"error": error_msg}
 
         client = get_azure_client()
-        project = os.getenv("AZURE_PROJECT")
 
         parent = client.get_work_item(parent_id)
+        project = parent.fields.get('System.TeamProject') or os.getenv("AZURE_PROJECT")
         parent_iteration = parent.fields.get('System.IterationPath')
 
         if priority == 0:
@@ -329,9 +329,9 @@ def execute_qa_feedback(parent_id: int, language: str, feedback_items: list) -> 
             return {"error": "feedback_items cannot be empty"}
 
         client = get_azure_client()
-        project = os.getenv("AZURE_PROJECT")
 
         parent = client.get_work_item(parent_id)
+        project = parent.fields.get('System.TeamProject') or os.getenv("AZURE_PROJECT")
         parent_iteration = parent.fields.get('System.IterationPath')
         parent_title = parent.fields.get('System.Title', '')
         parent_ac = parent.fields.get('Microsoft.VSTS.Common.AcceptanceCriteria', '')
