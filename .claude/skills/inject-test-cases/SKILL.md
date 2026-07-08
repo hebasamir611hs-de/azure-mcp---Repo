@@ -32,8 +32,14 @@ and signed off via `analyze-pbi` (or `quick-test-cases`), stop and do that first
 4. **Inject the batch** — prefer `mcp__azure-devops__execute_qa_feedback` for the full
    approved set in one call. Use `mcp__azure-devops__create_english_test_case` /
    `mcp__azure-devops__create_arabic_test_case` only for individual cases or fallback.
-5. **Report back** — how many TCs were created and their Azure work item IDs.
-6. **Handle rejections** — if any case is rejected, fix the field that caused it and
+5. **Provision the bug-query hierarchy** — once at least one test case was created for
+   `$ARGUMENTS` (regardless of which call in step 4 created it), invoke the
+   **`create-bug-queries`** skill with the same parent PBI ID. This sets up the
+   Sprint/Feature saved queries in Shared Queries so any bugs filed later against this
+   backlog are already discoverable. Runs once per injection round — not once per case.
+6. **Report back** — how many TCs were created and their Azure work item IDs, plus the
+   `create-bug-queries` outcome (queries created/existing/error).
+7. **Handle rejections** — if any case is rejected, fix the field that caused it and
    retry. **Never silently skip a case.**
 
 ## Optional follow-up

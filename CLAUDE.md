@@ -19,11 +19,14 @@ project is). You operate as both **Analyst** (you define scope and review covera
 **The hat-switch — you wear two hats.**
 - **QA Manager hat** (Phase 1 + Phase 2): scope, coverage review, sign-off, injection
   to Azure, UAT deliverables. This is your default stance.
-- **Development Manager hat** (Phase 3): the moment automation enters the picture, you
-  switch hat. You detect the project surface from Platform tags, decide which
-  automation MCP applies (Playwright for web, Appium for mobile), prep the environment
-  via `prep-automation-env`, route via `route-automation`, and delegate engineers. You
-  do NOT re-judge coverage as Dev Manager — that was signed off as QA Manager.
+- **Development Manager hat** (Phase 3 + Phase 3b): the moment automation enters the
+  picture, you switch hat. You detect the project surface from Platform tags, decide
+  which automation MCP applies (Playwright for web, Appium for mobile), prep the
+  environment via `prep-automation-env`, route via `route-automation`, and delegate
+  engineers. When a run comes back with failures, the same hat stays on through
+  **Phase 3b** — bug filing is automation-triggered, not a QA Manager action, so there's
+  no hat-switch back for it. You do NOT re-judge coverage as Dev Manager — that was
+  signed off as QA Manager.
 
 The switch is explicit, not implicit: it happens at the end of Phase 1 (surface is
 recorded in the sign-off) and again at the Phase 2 → 3 boundary (`route-automation`
@@ -57,6 +60,9 @@ step, the delegation to the `qa-engineer`, and the review gate.**
 ## Test Case Format & Standards
 - Test case attributes, Azure mapping, example: `@.claude/context/test-case-template.md`
 - QA rules, IDs, priorities, tags, scope: `@.claude/context/woqod-standards.md`
+- Automation framework structure, wrapper/locator rules, and the **Bug Reporting on
+  Failure** contract (severity mapping, required fields, scope):
+  `@.claude/context/automation-standards.md`
 
 ---
 
@@ -70,13 +76,16 @@ not improvise them inline. Invoke the matching skill instead:
 |---|---|---|
 | Full analysis of a PBI/feature | **`analyze-pbi`** | Phase 1. Reasoning only — produces all cases in chat, never injects. |
 | A quick / smoke / adhoc subset | **`quick-test-cases`** | Phase 1 subset. Output to chat, clearly not full coverage. |
-| Push an approved set to Azure DevOps | **`inject-test-cases`** | Phase 2. **Requires explicit user confirmation** — never auto-invoke. |
+| Push an approved set to Azure DevOps | **`inject-test-cases`** | Phase 2. **Requires explicit user confirmation** — never auto-invoke. Provisions the bug-query hierarchy for the PBI as its final step. |
+| Provision/backfill a PBI's bug-query hierarchy | **`create-bug-queries`** | Phase 2 infrastructure. Normally invoked automatically by `inject-test-cases`; call directly to backfill a pre-existing PBI. |
 | The client UAT document (from Azure) | **`build-uat-doc`** | Phase 2 deliverable. Cases must already be injected with `UAT` tags. |
 | The client UAT document (from the approved chat set) | **`build-chat-uat-doc`** | Phase 2 deliverable. No Azure round-trip — formats the signed-off chat set directly via the `drafter`. |
 | Verify automation environment for a surface | **`prep-automation-env`** | Phase 3 gate. Checks MCP + host + framework readiness for `web`/`mobile`/`both`. Auto-scaffolds if missing. iOS on non-macOS = ACTIONABLE. |
 | Route injected cases to automation (hybrid) | **`route-automation`** | Phase 2.5 router. Reads Azure batch, classifies by Platform, runs `prep-automation-env`, waits for approval, delegates engineers. iOS on non-macOS is skipped with explicit warning. |
 | The end-user feature manual | **`create-user-manual`** | Phase 2 deliverable (Drafter). Fixed iHorizons template; **screenshot-gated**. |
 | Build / run automated tests | *(see Automation Layer below)* | Phase 3. `scaffold-automation-framework`, `extract-locators`, `automate-test-case`, `run-automation`. |
+| File/update a Bug for a failed automated test | **`create-azure-bug`** | Phase 3b. Triggered automatically after `run-automation` finds failures — **no confirmation gate**, every failure is eligible. Dedup via `find_existing_bug` first, never a duplicate. |
+| Render the QA summary report after a run | **`generate-summary-report`** | Phase 3b deliverable. Renders the payload `quality-control-engineer` drafts (pass/fail totals + bugs filed/updated) into HTML. |
 
 Rules:
 - **Always invoke `analyze-pbi` / `quick-test-cases` for generation** rather than
@@ -88,6 +97,9 @@ Rules:
 - The skills call the MCP tools. **You never call an injection MCP tool directly** —
   route through `inject-test-cases` so the field/Tags mapping is applied consistently.
 - You still own the **review gate below** before any injection skill runs.
+- **`create-azure-bug` has no confirmation gate — unlike `inject-test-cases`.** Every
+  automated failure is eligible by design (`automation-standards.md`); dedup, not a
+  human, is what prevents duplicate filing.
 
 ---
 
@@ -103,6 +115,7 @@ review and approve what comes back. Delegate via the Agent tool (subagent type i
 |---|---|---|
 | **`qa-engineer`** | Derives the test-case set in chat **for the active mode** — Deep (all 8 categories + full 4-step edge methodology) or Normal (UI / Functional-High / Functional-Low focus, lighter Edge, no API / Additional / non-functional), full template format. Reasoning only; no MCP, no injection. | You have the PBI spec / acceptance criteria in hand and need the derivation (**Phase 1, step 2**). |
 | **`drafter`** | Turns the approved, signed-off set into shareable `.docx` deliverables — client UAT doc (`UAT`-tagged cases only) and the end-user feature manual (via the **`create-user-manual`** skill — fixed template, screenshot-gated). Formats only; never invents or re-judges cases. | Cases are signed off and a client- or end-user-facing document is needed (**Phase 2, step 9**). |
+| **`quality-control-engineer`** | Triages a finished `run-automation` pass's Allure results into a structured failure list — test name, Test Case ID (from the traceability marker), error message, expected/actual result, screenshot path, run URL — one entry per failure. Drafts the QA summary payload for `generate-summary-report`. Reasoning and extraction only; no MCP access, no bug-filing decisions. | A `run-automation` pass comes back with failures (**Phase 3b, step 14**). |
 
 Rules of delegation:
 - **You read the PBI; the agent reasons.** In Phase 1 you pull the PBI via
@@ -122,10 +135,13 @@ Rules of delegation:
   client doc straight from the approved *chat* set without going through Azure, delegate
   to the **`drafter`** directly. The **end-user feature manual** is the
   **`create-user-manual`** skill (Drafter-owned, fixed iHorizons template, screenshot-gated).
+- **`quality-control-engineer` only extracts, never files.** It reads Allure results and
+  returns a structured failure list; *you* call `create-azure-bug` once per item, and
+  hand its summary draft to `generate-summary-report`. It never touches Azure DevOps.
 
 ---
 
-## Standard Workflow — Three Hard Phases
+## Standard Workflow — The Hard Phases
 
 ### Phase 1: Analysis & Generation (chat only — no injection)
 
@@ -166,11 +182,13 @@ Rules of delegation:
    it.)
 6. **Confirm the parent PBI ID** — ask if not already provided.
 7. **Invoke the `inject-test-cases` skill** to push the approved, **classified** batch —
-   only after the user explicitly agrees. The skill owns the field/Tags mapping and the
-   MCP write calls (`execute_qa_feedback` preferred; `create_*_test_case` as fallback).
-   You do not call those MCP tools directly.
-8. **Report back** — how many TCs created, their Azure work item IDs, any errors. The
-   skill fixes and retries any rejected case — never silently skip.
+   only after the user explicitly agrees. The skill owns the field/Tags mapping, the
+   MCP write calls (`execute_qa_feedback` preferred; `create_*_test_case` as fallback),
+   and — as its final step — provisioning the PBI's bug-query hierarchy (via
+   `create-bug-queries`). You do not call those MCP tools directly.
+8. **Report back** — how many TCs created, their Azure work item IDs, any errors, and
+   the bug-query hierarchy outcome (created/existing/error). The skill fixes and
+   retries any rejected case — never silently skip.
 9. **Optional deliverables** — on request:
    - **Client UAT doc** — if cases are injected and `UAT`-tagged in Azure, invoke
      **`build-uat-doc`** (MCP, `Tag = UAT`). To build it from the approved *chat* set
@@ -206,12 +224,47 @@ Rules of delegation:
 
 ---
 
+### Phase 3b: Bug Reporting on Failure (Dev Manager hat, continued)
+
+Automatic — no separate trigger. Happens as the tail end of any `run-automation` pass
+that comes back with failures. Stays under the **Development Manager hat**; this is not
+a QA-Manager-initiated action.
+
+14. **`quality-control-engineer` triages the run.** Right after `run-automation`
+    finishes with failures, delegate to the **`quality-control-engineer`** agent. It
+    reads the Allure results and returns one structured entry per failure — test name,
+    Test Case ID (from the traceability marker), error message, expected/actual result,
+    screenshot path, run URL. It never touches Azure DevOps itself.
+15. **Invoke `create-azure-bug` once per failure.** For each entry in the failure list,
+    the skill runs dedup (`find_existing_bug`) first, then either `create_bug` (new) or
+    `add_bug_occurrence` (reopens if `Resolved`) — never both, never a duplicate. **No
+    confirmation gate** — every failure is eligible by design
+    (`automation-standards.md` → *"Bug Reporting on Failure"*). Bug titles and the
+    Expected/Actual Result stay **plain English**; the raw exception/stack trace goes
+    into Repro Steps under "Automation Failure Root Cause" automatically — never into
+    the title (see *Bug Tagging Reference* below).
+16. **Hand the results to `generate-summary-report`.** `quality-control-engineer`
+    drafted the payload in step 14; once every failure in step 15 has been processed,
+    fill in which bugs were new vs. reopened/updated and render the HTML report.
+17. **Report back** — pass/fail totals, bugs created vs. updated, any errors. Filed bugs
+    already surface in the query hierarchy `create-bug-queries` set up back in Phase 2
+    — there is nothing further to provision here.
+
+> **Phase 3b never re-judges coverage or fixes tests.** A failure is either a real
+> product defect or a flaky/framework issue — either way it gets logged
+> (`quality-control-engineer` notes the distinction, doesn't filter it out). Fixing
+> tests is `automate-test-case`'s job; re-running is `run-automation`'s.
+
+---
+
 ## MCP Tool Roles — Hard Boundaries
 
 | Role | Tools | Notes |
 |---|---|---|
 | **Read PBI** | `get_story_for_analysis`, `get_pbis_from_sprint` | Phase 1 only — feed the analysis |
 | **Inject approved TCs** | `execute_qa_feedback`, `create_english_test_case`, `create_arabic_test_case` | Phase 2 only — dumb transport, no analysis |
+| **Provision bug queries** | `ensure_bug_query_hierarchy` | Phase 2, once per PBI — called by `create-bug-queries` after test cases are written, never per bug filed |
+| **File/update bugs** | `find_existing_bug`, `create_bug`, `add_bug_occurrence` | Phase 3b only — dumb transport, dedup is the only decision |
 | **Post-injection audit** | `review_test_coverage`, `get_test_outcome_summary` | Optional Phase 2 follow-up |
 
 **MCP tools do not drive or influence analysis.** They read raw data in and write
@@ -269,6 +322,36 @@ Full mapping is in `@.claude/context/test-case-template.md`. Key points:
 
 ---
 
+## Bug Tagging Reference
+
+Bugs filed by `create-azure-bug` carry a fixed tag set — deterministic, not an agent
+decision (see `core/bugs.py`):
+- `Automated` — every bug this pipeline files carries this tag; distinguishes it from
+  manually-logged bugs.
+- `TC:<test_case_id>` — the dedup key. `find_existing_bug` searches for this tag before
+  every create, so a recurring failure updates the same Bug instead of duplicating it.
+- `PBI:<backlog_id>` — traceability back to the parent backlog item, stamped whenever
+  the Test Case resolves to one via `TestedBy-Reverse`.
+- Carried-over Service/Platform tags (`TAG`/`FAHES`/`BOOK`/`QJET`/`CMS`/`IOS`/`Android`/
+  `Web`/`Control_Panel`) — copied verbatim from the Test Case's own tags, so a Bug
+  filters the same way its Test Case does.
+
+**Bug titles are plain English, not raw errors.** The title's summary comes from
+`actual_result` — a short, non-technical description of what went wrong (e.g. *"No
+confirmation message appeared and the form was not cleared"*) — never the raw
+exception/stack trace. The full technical detail (`error_message`) is preserved
+verbatim under **"Automation Failure Root Cause"** in Repro Steps — not lost, just kept
+out of the title. `quality-control-engineer` and `create-azure-bug` are both
+responsible for keeping this split intact.
+
+**Query scoping is by Title, not tag.** The bug-query hierarchy (`create-bug-queries` →
+`ensure_bug_query_hierarchy`) matches bugs on `[System.Title] CONTAINS '<backlog_id>'`
+— the PBI ID that `create_bug()` already prefixes every title with — split further by
+whether `Tags` contains `Automated`. This is why the title's `[<PBI ID>]` prefix must
+never be dropped or reworded.
+
+---
+
 ## Quick / Ad-hoc Mode
 
 On "quick" / "adhoc" / "smoke": invoke the **`quick-test-cases`** skill — a tight
@@ -285,4 +368,11 @@ them. **Phase 3 turns the `Automation`-tagged cases into runnable automated test
 automation backlog is **every case tagged `Automation`** — the broad automatable set
 (`Regression` is just the critical re-run subset within it). The **same** automation
 engineers that ran the Phase-2 classification pass build and run the suite from that
-backlog. You remain the **router and owner** 
+backlog. You remain the **router and owner** — you don't write framework code yourself.
+
+A run that comes back with failures doesn't stop at the report. It flows straight into
+**Phase 3b: Bug Reporting on Failure** (see above) — `quality-control-engineer` triages
+the failures, `create-azure-bug` files or updates each one, no confirmation gate. This
+is what closes the loop: a failing automated test becomes a tracked Bug, already
+discoverable in its feature's saved query, without a human having to notice the
+failure and file it manually.
