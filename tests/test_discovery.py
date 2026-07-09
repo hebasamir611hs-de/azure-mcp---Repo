@@ -29,7 +29,7 @@ def _run(items):
     )
     client.get_work_items.return_value = items
     with patch.object(discovery, "get_azure_client", return_value=client):
-        return discovery.get_pbis_from_sprint("Asiacell eCommerce Platform\\Headless Implementation")
+        return discovery.get_pbis_from_sprint("SomeProject\\Sprint 1")
 
 
 class TestSprintValidationGate:

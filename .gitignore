@@ -38,6 +38,8 @@ outputs/
 unpacked_uat/
 scratch/
 docs/
+# ...except architecture decision records — those are team-facing and reviewed in PRs
+!docs/adr-*.md
 deliverables/
 *.docx
 *.pdf

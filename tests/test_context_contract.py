@@ -1,8 +1,7 @@
 """
 Context Contract Tests — validates the ACTIVE project context files' structure
-and their consistency with the engine. Content-agnostic: passes for WOQOD,
-Asiacell, Smart Khotba, or any project, as long as the files keep the contract
-the agents and skills depend on.
+and their consistency with the engine. Content-agnostic: passes for ANY project's
+content, as long as the files keep the contract the agents and skills depend on.
 
 Closes the gap: engine code has 92 tests, but the knowledge files the agents
 read had zero validation — a broken table or leftover merge marker would
@@ -102,8 +101,8 @@ def test_platform_codes_are_exactly_the_canonical_four(standards_text):
 
 
 def test_tc_id_examples_use_declared_service_codes(standards_text):
-    """Catches stale examples from another project (e.g. WOQOD codes left in an
-    Asiacell standards file) — the exact drift that caused the multi-project mixup."""
+    """Catches stale examples from another project (service codes left over in a
+    different project's standards file) — the exact drift behind the multi-project mixup."""
     services = set(_table_codes(standards_text, "## Service / Module Codes"))
     section = standards_text.split("## Test Case ID Convention", 1)[1].split("\n## ", 1)[0]
     examples = re.findall(r"`([A-Z]+)-[A-Z0-9]+-TC-\d+`", section)

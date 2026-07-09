@@ -10,8 +10,8 @@ automated tests through Playwright (web) and Appium (mobile) MCP servers.
 
 > Built by the iHorizons QA team. The engine is **project-agnostic**: all
 > project/business specifics live in `.claude/context/` — swap those two files to
-> retarget (currently serving multiple projects: WOQOD, Asiacell eCommerce Platform,
-> Awqaf Smart Khotba). On writes, the MCP derives the Azure team project from the
+> retarget it to any project (it currently serves multiple client projects from one
+> shared repo). On writes, the MCP derives the Azure team project from the
 > **parent PBI itself** (`System.TeamProject`), so one org-level PAT can serve all
 > projects; `AZURE_PROJECT` in `.env` scopes the sprint-level read queries.
 
@@ -227,7 +227,7 @@ Lifecycle / Service / Platform / Category; the **Automation engineer** assigns
 | 0 — Provenance | `Ai_MCP_Injected` | MCP (automatic) |
 | 1a — Lifecycle | `UAT`, `Regression` | QA Engineer |
 | 1b — Execution method | `Automation`, `Manual` (exactly one) | **Automation Engineer** (pre-injection pass) |
-| 2 — Service | **Per-project codes** from the active `*-standards.md` (e.g. WOQOD: `TAG`/`FAHES`/`BOOK`; Asiacell: `CHECKOUT`/`SIM`/`CATALOG`/`PAYMENT`…) | QA Engineer |
+| 2 — Service | **Per-project codes** from the active `*-standards.md` (e.g. a fuel-services project: `TAG`/`FAHES`; an e-commerce project: `CHECKOUT`/`CART`/`PAYMENT`…) | QA Engineer |
 | 3 — Platform | `Web`, `IOS`, `Android`, `Control_Panel` | QA Engineer |
 | 4 — Category | UI, Functional-High, Functional-Low, etc. | QA Engineer |
 | 5 — Business | Optional keyword (e.g. `Payment`) | QA Engineer |
@@ -410,7 +410,7 @@ with the hardening work below (dict contract, Phase-3 renumbering).
 A full senior review of the engine surfaced and fixed three P1 bugs plus a set of
 reliability gaps. All fixes are covered by the new pytest suite and were verified
 end-to-end against live Azure DevOps (smoke E2E + a full production sprint run of
-11 PBIs / 400+ injected cases on the Asiacell Headless Implementation sprint).
+11 PBIs / 400+ injected cases on a live client sprint).
 
 **P1 bug fixes**
 - **Link-type mismatch (blindness bug):** injection links TC → PBI via
@@ -529,4 +529,4 @@ Carried over from PR #4 (Analysis Modes + create-user-manual):
 
 ## License
 
-Internal — iHorizons QA team (multi-project: WOQOD · Asiacell eCommerce · Awqaf Smart Khotba).
+Internal — iHorizons QA team (multi-project engine).

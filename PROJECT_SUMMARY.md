@@ -119,7 +119,7 @@ SIGN-OFF GATE                 build-chat-uat-doc                   senior-web-en
 | 0 — Provenance | `Ai_MCP_Injected` | MCP (auto) |
 | 1a — Lifecycle | `UAT`, `Regression` | QA Engineer |
 | **1b — Execution method** | `Automation` / `Manual` (exactly one) | **Automation Engineer** (pre-injection) |
-| 2 — Service | Per-project codes from the active standards file (WOQOD: `TAG`/`FAHES`/… · Asiacell: `CHECKOUT`/`SIM`/`PAYMENT`/…) | QA Engineer |
+| 2 — Service | Per-project codes from the active standards file (e.g. `TAG`/`FAHES` for a fuel-services project · `CHECKOUT`/`CART`/`PAYMENT` for an e-commerce one) | QA Engineer |
 | 3 — Platform | `Web` / `IOS` / `Android` / `Control_Panel` | QA Engineer |
 | 4 — Category | UI / Functional-High / Functional-Low / etc. | QA Engineer |
 | 5 — Business | Optional keyword | QA Engineer |
@@ -189,11 +189,10 @@ Start with: `Analyze PBI <id>` for the default Normal mode, or add `deep` for De
 
 ## Proven in production
 
-July 2026: full sprint run on **Asiacell eCommerce Platform \ Headless Implementation**
-— 11 PBIs analyzed (10 of them Description-only, no AC), classified, and injected
-(~400 cases, e.g. Guest Checkout: 40/40, 30 Automation / 10 Manual, 0 rejected),
-then verified back through `review_test_coverage` with 100% tag-sourced
-classification.
+July 2026: full sprint run on a **live client sprint** — 11 PBIs analyzed (10 of
+them Description-only, no AC), classified, and injected (~400 cases; sample PBI:
+40/40 created, 30 Automation / 10 Manual, 0 rejected), then verified back through
+`review_test_coverage` with 100% tag-sourced classification.
 
 ---
 
