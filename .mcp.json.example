@@ -1,4 +1,5 @@
 {
+  "_comment": "Canonical MCP registry. Copy to .mcp.json (git-ignored) on first clone: cp .mcp.json.example .mcp.json — keep paths RELATIVE; never commit machine-specific absolute paths.",
   "mcpServers": {
     "azure-devops": {
       "command": ".venv\\Scripts\\python.exe",
@@ -10,15 +11,18 @@
         "PYTHONUNBUFFERED": "1"
       }
     },
-    "playwright": {
-      "command": "npx",
-      "args": ["@playwright/mcp@latest"]
-    },
     "appium": {
       "command": "npx",
       "args": [
         "-y",
         "appium-mcp@latest"
+      ]
+    },
+    "playwright": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@playwright/mcp@latest"
       ]
     }
   }

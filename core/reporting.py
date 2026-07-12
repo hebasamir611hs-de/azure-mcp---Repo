@@ -9,9 +9,9 @@ All functions are plain — no @mcp.tool() decorators. Registration happens in s
 Credentials are loaded from .env (AZURE_PAT, AZURE_ORG_URL, AZURE_PROJECT).
 """
 
+import json
 import os
 import re
-import json
 from base64 import b64encode
 from urllib.parse import quote
 from typing import List, Optional, Dict, Any
@@ -193,8 +193,7 @@ def _ensure_query(
             "url": html_link,
         }
 
-    created_str = create_work_item_query(name, folder_path, wiql_where, columns)
-    created = json.loads(created_str)
+    created = create_work_item_query(name, folder_path, wiql_where, columns)
     created["status_action"] = "created" if created.get("status") == "success" else "error"
     return created
 
@@ -208,7 +207,7 @@ def create_work_item_query(
     folder_path: str,
     wiql_criteria: str,
     columns: Optional[List[str]] = None,
-) -> str:
+) -> dict:
     """
     SKILL 2: Create a Work Item Query in Azure DevOps
 
@@ -302,7 +301,7 @@ def create_work_item_query(
                     f"'{folder_path}' with {len(resolved_columns)} column(s)."
                 ),
             }
-            return json.dumps(result_dict, indent=2)
+            return result_dict
 
         try:
             api_msg = response.json().get("message", response.text)
@@ -315,11 +314,11 @@ def create_work_item_query(
             "http_status": response.status_code,
             "error": f"[create_work_item_query] Failed to create query: {api_msg}",
         }
-        return json.dumps(error_dict, indent=2)
+        return error_dict
 
     except Exception as e:
         error_result = handle_error(e, "create_work_item_query")
-        return json.dumps(error_result, indent=2)
+        return error_result
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -365,7 +364,11 @@ def _run_wiql(org_url: str, project: str, wiql: str) -> list:
 
 
 def _fetch_work_items(org_url: str, project: str, ids: list, fields: list) -> list:
-    """Batch-fetches work items with the requested fields (200 per request)."""
+    """
+    Batch-fetches work items with the requested fields (200 per request).
+    Raises ValueError on any failed batch — a partial fetch must fail loudly,
+    never silently undercount a summary.
+    """
     if not ids:
         return []
     results = []
@@ -379,15 +382,22 @@ def _fetch_work_items(org_url: str, project: str, ids: list, fields: list) -> li
             f"?ids={ids_param}&fields={fields_param}&api-version=7.1"
         )
         resp = requests.get(url, headers=_auth_headers(), timeout=60)
-        if resp.status_code == 200:
-            results.extend(resp.json().get("value", []))
+        if resp.status_code != 200:
+            try:
+                msg = resp.json().get("message", resp.text)
+            except ValueError:
+                msg = resp.text or f"HTTP {resp.status_code}"
+            raise ValueError(
+                f"Work-item batch fetch failed (ids {batch[0]}..{batch[-1]}): {msg}"
+            )
+        results.extend(resp.json().get("value", []))
     return results
 
 
 def get_query_summary(
     query_id_or_path: str,
     group_by: Optional[List[str]] = None,
-) -> str:
+) -> dict:
     """
     SKILL 3: Query Summary — Run a Saved Query and Return Count Breakdowns
 
@@ -409,7 +419,7 @@ def get_query_summary(
                                    Default: ["State", "AssignedTo", "WorkItemType"]
 
     Returns:
-        JSON string with structure:
+        dict with structure:
         {
             "status":       "success" | "error",
             "query_id":     str,
@@ -447,7 +457,7 @@ def get_query_summary(
                 "error_type": "api",
                 "error": "[get_query_summary] Query returned empty WIQL.",
             }
-            return json.dumps(result, indent=2)
+            return result
 
         item_ids = _run_wiql(org_url, project, wiql)
         total = len(item_ids)
@@ -460,7 +470,7 @@ def get_query_summary(
                 "summary": {},
                 "message": "Query returned 0 work items.",
             }
-            return json.dumps(result, indent=2)
+            return result
 
         # ── Batch-fetch work items ────────────────────────────────────────────
         work_items = _fetch_work_items(org_url, project, item_ids, fetch_fields)
@@ -499,11 +509,11 @@ def get_query_summary(
                 f"{len(resolved)} field(s)."
             ),
         }
-        return json.dumps(result, indent=2)
+        return result
 
     except Exception as e:
         error_result = handle_error(e, "get_query_summary")
-        return json.dumps(error_result, indent=2)
+        return error_result
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -597,7 +607,7 @@ def ensure_bug_query_hierarchy(backlog_id: int) -> str:
 # TEST SUITE RESULTS & OUTCOMES
 # ─────────────────────────────────────────────────────────────────────────────
 
-def get_test_outcome_summary(test_suite_id: int, test_plan_id: int = None) -> str:
+def get_test_outcome_summary(test_suite_id: int, test_plan_id: int = None) -> dict:
     """
     Retrieves aggregated test outcomes from a test suite's Execute page.
     
@@ -610,7 +620,7 @@ def get_test_outcome_summary(test_suite_id: int, test_plan_id: int = None) -> st
         test_plan_id (int, optional): The test plan ID (required for proper context)
     
     Returns:
-        JSON string with structure:
+        dict with structure:
         {
             "status": "success" | "error",
             "test_suite_id": int,
@@ -657,35 +667,45 @@ def get_test_outcome_summary(test_suite_id: int, test_plan_id: int = None) -> st
         project = os.getenv("AZURE_PROJECT")
         
         # ── Fetch test points for the suite (Execute page data) ────────────────
-        # Test points contain the latest outcome for each test case in a suite
-        # Note: test_plan_id is needed as context in the API path
+        # Test points contain the latest outcome for each test case in a suite.
+        # Paginated via $skip/$top so suites larger than one page are not
+        # silently truncated.
         if test_plan_id:
-            test_points_url = (
+            base_points_url = (
                 f"{org_url}/{project}/_apis/test/plans/{test_plan_id}/suites/{test_suite_id}/points"
-                f"?api-version=7.1&$top=2000"
             )
         else:
-            test_points_url = (
+            base_points_url = (
                 f"{org_url}/{project}/_apis/test/suites/{test_suite_id}/points"
-                f"?api-version=7.1&$top=2000"
             )
-        
-        points_resp = requests.get(test_points_url, headers=_auth_headers(), timeout=60)
-        
-        if points_resp.status_code != 200:
-            try:
-                msg = points_resp.json().get("message", points_resp.text)
-            except ValueError:
-                msg = points_resp.text or f"HTTP {points_resp.status_code}"
-            error_result: Dict[str, Any] = {
-                "status": "error",
-                "error_type": "api",
-                "http_status": points_resp.status_code,
-                "error": f"[get_test_outcome_summary] Failed to fetch test points: {msg}",
-            }
-            return json.dumps(error_result, indent=2)
-        
-        test_points = points_resp.json().get("value", [])
+
+        test_points = []
+        skip = 0
+        page_size = 1000
+        while True:
+            test_points_url = (
+                f"{base_points_url}?api-version=7.1&$top={page_size}&$skip={skip}"
+            )
+            points_resp = requests.get(test_points_url, headers=_auth_headers(), timeout=60)
+
+            if points_resp.status_code != 200:
+                try:
+                    msg = points_resp.json().get("message", points_resp.text)
+                except ValueError:
+                    msg = points_resp.text or f"HTTP {points_resp.status_code}"
+                error_result: Dict[str, Any] = {
+                    "status": "error",
+                    "error_type": "api",
+                    "http_status": points_resp.status_code,
+                    "error": f"[get_test_outcome_summary] Failed to fetch test points: {msg}",
+                }
+                return error_result
+
+            page = points_resp.json().get("value", [])
+            test_points.extend(page)
+            if len(page) < page_size:
+                break
+            skip += page_size
         
         if not test_points:
             result: Dict[str, Any] = {
@@ -712,7 +732,7 @@ def get_test_outcome_summary(test_suite_id: int, test_plan_id: int = None) -> st
                 "by_priority": {},
                 "message": f"No test cases found in test suite {test_suite_id}."
             }
-            return json.dumps(result, indent=2)
+            return result
         
         # ── Aggregate test outcomes ──────────────────────────────────────────
         total_test_cases = len(test_points)
@@ -816,18 +836,18 @@ def get_test_outcome_summary(test_suite_id: int, test_plan_id: int = None) -> st
             )
         }
         
-        return json.dumps(result, indent=2)
+        return result
     
     except Exception as e:
         error_result = handle_error(e, "get_test_outcome_summary")
-        return json.dumps(error_result, indent=2)
+        return error_result
 
 
 # ─────────────────────────────────────────────────────────────────────────────
 # TEST RUN RESULTS & OUTCOMES
 # ─────────────────────────────────────────────────────────────────────────────
 
-def get_test_run_outcome_summary(test_run_id: int) -> str:
+def get_test_run_outcome_summary(test_run_id: int) -> dict:
     """
     Retrieves aggregated test outcomes from a specific Azure DevOps Test Run.
 
@@ -839,7 +859,7 @@ def get_test_run_outcome_summary(test_run_id: int) -> str:
         test_run_id (int): The test run ID to query.
 
     Returns:
-        JSON string with structure:
+        dict with structure:
         {
             "status": "success" | "error",
             "test_run_id": int,
@@ -883,12 +903,12 @@ def get_test_run_outcome_summary(test_run_id: int) -> str:
                 msg = run_resp.json().get("message", run_resp.text)
             except ValueError:
                 msg = run_resp.text or f"HTTP {run_resp.status_code}"
-            return json.dumps({
+            return {
                 "status": "error",
                 "error_type": "api",
                 "http_status": run_resp.status_code,
                 "error": f"[get_test_run_outcome_summary] Failed to fetch test run: {msg}",
-            }, indent=2)
+            }
 
         run_data = run_resp.json()
         run_name = run_data.get("name", f"Run {test_run_id}")
@@ -940,12 +960,12 @@ def get_test_run_outcome_summary(test_run_id: int) -> str:
                     msg = results_resp.json().get("message", results_resp.text)
                 except ValueError:
                     msg = results_resp.text or f"HTTP {results_resp.status_code}"
-                return json.dumps({
+                return {
                     "status": "error",
                     "error_type": "api",
                     "http_status": results_resp.status_code,
                     "error": f"[get_test_run_outcome_summary] Failed to fetch results: {msg}",
-                }, indent=2)
+                }
 
             batch = results_resp.json().get("value", [])
             if not batch:
@@ -962,7 +982,7 @@ def get_test_run_outcome_summary(test_run_id: int) -> str:
             skip += batch_size
 
         if total_results == 0:
-            return json.dumps({
+            return {
                 "status": "success",
                 "test_run_id": test_run_id,
                 "run_name": run_name,
@@ -973,7 +993,7 @@ def get_test_run_outcome_summary(test_run_id: int) -> str:
                 "execution_rate": "0%",
                 "outcomes_summary": {},
                 "message": f"No test results found in test run {test_run_id}.",
-            }, indent=2)
+            }
 
         # ── Calculate statistics ─────────────────────────────────────────────
         passed       = outcomes_count.get("Passed", 0)
@@ -1017,8 +1037,8 @@ def get_test_run_outcome_summary(test_run_id: int) -> str:
             ),
         }
 
-        return json.dumps(result, indent=2)
+        return result
 
     except Exception as e:
         error_result = handle_error(e, "get_test_run_outcome_summary")
-        return json.dumps(error_result, indent=2)
+        return error_result

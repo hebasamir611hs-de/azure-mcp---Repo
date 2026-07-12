@@ -12,6 +12,7 @@ Credentials are loaded from .env (AZURE_PAT, AZURE_ORG_URL, AZURE_PROJECT).
 """
 
 import os
+import re
 import json
 from base64 import b64encode
 from datetime import datetime, timezone
@@ -106,6 +107,32 @@ def _upload_attachment(org_url: str, project: str, file_path: Optional[str]) -> 
         result = resp.json()
         return {"url": result.get("url"), "id": result.get("id")}
     return None
+
+
+# Technical noise that must NEVER appear in a Bug title. If the summary matches,
+# it is not plain English — replace it with a neutral fallback. (Team review
+# feedback, July 2026: titles are for humans; raw errors live in Repro Steps.)
+_TECHNICAL_TITLE_PATTERNS = re.compile(
+    r"(Traceback|Exception|(?<![A-Za-z])Error(?![A-Za-z])|[A-Za-z]+Error\b|"
+    r"AssertionError|TimeoutError|ElementNotFound|NoSuchElement|StaleElement|"
+    r"stack trace|at line \d+|File \"|selenium\.|playwright\.|appium\.|"
+    r"HTTP\s*[45]\d\d|status[_ ]?code)",
+    re.IGNORECASE,
+)
+
+
+def _sanitize_title_summary(actual_result: str, error_message: str, max_len: int = 100) -> str:
+    """
+    Returns a plain-English title summary. Priority:
+      1. actual_result — if supplied AND it doesn't look like a raw technical error.
+      2. Neutral fallback — technical detail stays in Repro Steps, never the title.
+    """
+    candidate = (actual_result or "").strip()
+    if candidate and not _TECHNICAL_TITLE_PATTERNS.search(candidate):
+        return candidate[:max_len].strip()
+    # actual_result missing or technical → do NOT fall back to error_message
+    # (that is exactly what produces unreadable titles).
+    return "The step did not produce the expected result (see Repro Steps for details)"
 
 
 def _build_repro_steps_html(
@@ -274,9 +301,12 @@ def create_bug(
 
         severity = _SEVERITY_MAP.get(priority, "3 - Medium")
         # Title summary is plain-English (actual_result) so a non-engineer can read
-        # it at a glance -- never the raw exception/stack trace. Falls back to a
-        # truncated error_message only if the caller didn't supply actual_result.
-        title_summary = (actual_result or error_message).strip()[:100].strip()
+        # it at a glance -- never the raw exception/stack trace. ENFORCED here, not
+        # just documented: if the summary looks technical (exception/stack-trace
+        # keywords), it is replaced with a neutral plain-English fallback; the full
+        # technical detail always lives in Repro Steps ("Automation Failure Root
+        # Cause"), so nothing is lost.
+        title_summary = _sanitize_title_summary(actual_result, error_message)
         title = f"Automated test failure: {test_name} — {title_summary}"
         if backlog_id:
             title = f"[{backlog_id}] {title}"

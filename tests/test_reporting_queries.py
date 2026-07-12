@@ -115,7 +115,7 @@ def test_ensure_query_returns_existing_without_creating(mock_get_item):
 @patch("core.reporting.create_work_item_query")
 @patch("core.reporting._get_query_item", return_value=None)
 def test_ensure_query_creates_when_missing(mock_get_item, mock_create_query):
-    mock_create_query.return_value = json.dumps({
+    mock_create_query.return_value = ({
         "status": "success", "query_id": "new-id",
         "path": "Shared Queries/Bugs/Sprint bugs/Sprint 23/My Feature",
         "columns": [], "url": "https://org/proj/_queries/query/new-id", "message": "created",
@@ -131,7 +131,7 @@ def test_ensure_query_creates_when_missing(mock_get_item, mock_create_query):
 @patch("core.reporting.create_work_item_query")
 @patch("core.reporting._get_query_item", return_value=None)
 def test_ensure_query_reports_error_action_on_failure(mock_get_item, mock_create_query):
-    mock_create_query.return_value = json.dumps({
+    mock_create_query.return_value = ({
         "status": "error", "error_type": "api", "http_status": 400, "error": "bad wiql",
     })
     result = reporting._ensure_query(

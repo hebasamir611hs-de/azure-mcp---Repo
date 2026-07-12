@@ -78,7 +78,8 @@ not improvise them inline. Invoke the matching skill instead:
 | A quick / smoke / adhoc subset | **`quick-test-cases`** | Phase 1 subset. Output to chat, clearly not full coverage. |
 | Push an approved set to Azure DevOps | **`inject-test-cases`** | Phase 2. **Requires explicit user confirmation** — never auto-invoke. Provisions the bug-query hierarchy for the PBI as its final step. |
 | Provision/backfill a PBI's bug-query hierarchy | **`create-bug-queries`** | Phase 2 infrastructure. Normally invoked automatically by `inject-test-cases`; call directly to backfill a pre-existing PBI. |
-| The client UAT document | **`build-uat-doc`** | Phase 2 deliverable. Cases must already be injected with `UAT` tags. |
+| The client UAT document (from Azure) | **`build-uat-doc`** | Phase 2 deliverable. Cases must already be injected with `UAT` tags. |
+| The client UAT document (from the approved chat set) | **`build-chat-uat-doc`** | Phase 2 deliverable. No Azure round-trip — formats the signed-off chat set directly via the `drafter`. |
 | Verify automation environment for a surface | **`prep-automation-env`** | Phase 3 gate. Checks MCP + host + framework readiness for `web`/`mobile`/`both`. Auto-scaffolds if missing. iOS on non-macOS = ACTIONABLE. |
 | Route injected cases to automation (hybrid) | **`route-automation`** | Phase 2.5 router. Reads Azure batch, classifies by Platform, runs `prep-automation-env`, waits for approval, delegates engineers. iOS on non-macOS is skipped with explicit warning. |
 | The end-user feature manual | **`create-user-manual`** | Phase 2 deliverable (Drafter). Fixed iHorizons template; **screenshot-gated**. |
@@ -114,7 +115,7 @@ review and approve what comes back. Delegate via the Agent tool (subagent type i
 |---|---|---|
 | **`qa-engineer`** | Derives the test-case set in chat **for the active mode** — Deep (all 8 categories + full 4-step edge methodology) or Normal (UI / Functional-High / Functional-Low focus, lighter Edge, no API / Additional / non-functional), full template format. Reasoning only; no MCP, no injection. | You have the PBI spec / acceptance criteria in hand and need the derivation (**Phase 1, step 2**). |
 | **`drafter`** | Turns the approved, signed-off set into shareable `.docx` deliverables — client UAT doc (`UAT`-tagged cases only) and the end-user feature manual (via the **`create-user-manual`** skill — fixed template, screenshot-gated). Formats only; never invents or re-judges cases. | Cases are signed off and a client- or end-user-facing document is needed (**Phase 2, step 9**). |
-| **`quality-control-engineer`** | Triages a finished `run-automation` pass's Allure results into a structured failure list — test name, Test Case ID (from the traceability marker), error message, expected/actual result, screenshot path, run URL — one entry per failure. Drafts the QA summary payload for `generate-summary-report`. Reasoning and extraction only; no MCP access, no bug-filing decisions. | A `run-automation` pass comes back with failures (**Phase 3b, step 13**). |
+| **`quality-control-engineer`** | Triages a finished `run-automation` pass's Allure results into a structured failure list — test name, Test Case ID (from the traceability marker), error message, expected/actual result, screenshot path, run URL — one entry per failure. Drafts the QA summary payload for `generate-summary-report`. Reasoning and extraction only; no MCP access, no bug-filing decisions. | A `run-automation` pass comes back with failures (**Phase 3b, step 14**). |
 
 Rules of delegation:
 - **You read the PBI; the agent reasons.** In Phase 1 you pull the PBI via
@@ -202,18 +203,18 @@ Rules of delegation:
 
 ### Phase 3: Automation Layer (Dev Manager hat — hybrid, never auto)
 
-9. **Switch hat to Development Manager.** Phase 3 starts only when the user explicitly
-   wants to automate the injected batch (or when you proposed the lookahead in the
-   Phase 1 sign-off and they said yes). You do NOT auto-trigger after `inject-test-cases`.
-10. **Invoke the `route-automation` skill** with the parent PBI ID. The skill reads the
+10. **Switch hat to Development Manager.** Phase 3 starts only when the user explicitly
+    wants to automate the injected batch (or when you proposed the lookahead in the
+    Phase 1 sign-off and they said yes). You do NOT auto-trigger after `inject-test-cases`.
+11. **Invoke the `route-automation` skill** with the parent PBI ID. The skill reads the
     injected cases from Azure, classifies them by Platform tag (Web / Android / iOS /
     Control_Panel), runs `prep-automation-env` per surface, shows the plan, and waits
     for explicit approval before delegating any engineer.
-11. **On approval, route-automation delegates** the matching senior automation engineer
+12. **On approval, route-automation delegates** the matching senior automation engineer
     per surface (`senior-web-automation-eng` for web/CMS, `senior-mobile-automation-eng`
     for Android). iOS on a non-macOS host is reported as skipped with an explicit
     *"needs macOS"* note — never silently dropped.
-12. **Run the suite** — once tests exist, the user invokes `run-automation` to execute
+13. **Run the suite** — once tests exist, the user invokes `run-automation` to execute
     by marker (`regression` / `web` / `ios` / `android` / `control_panel`) and produce
     the Allure report. You report what landed, what was skipped, what to do next.
 
@@ -229,12 +230,12 @@ Automatic — no separate trigger. Happens as the tail end of any `run-automatio
 that comes back with failures. Stays under the **Development Manager hat**; this is not
 a QA-Manager-initiated action.
 
-13. **`quality-control-engineer` triages the run.** Right after `run-automation`
+14. **`quality-control-engineer` triages the run.** Right after `run-automation`
     finishes with failures, delegate to the **`quality-control-engineer`** agent. It
     reads the Allure results and returns one structured entry per failure — test name,
     Test Case ID (from the traceability marker), error message, expected/actual result,
     screenshot path, run URL. It never touches Azure DevOps itself.
-14. **Invoke `create-azure-bug` once per failure.** For each entry in the failure list,
+15. **Invoke `create-azure-bug` once per failure.** For each entry in the failure list,
     the skill runs dedup (`find_existing_bug`) first, then either `create_bug` (new) or
     `add_bug_occurrence` (reopens if `Resolved`) — never both, never a duplicate. **No
     confirmation gate** — every failure is eligible by design
@@ -242,10 +243,10 @@ a QA-Manager-initiated action.
     Expected/Actual Result stay **plain English**; the raw exception/stack trace goes
     into Repro Steps under "Automation Failure Root Cause" automatically — never into
     the title (see *Bug Tagging Reference* below).
-15. **Hand the results to `generate-summary-report`.** `quality-control-engineer`
-    drafted the payload in step 13; once every failure in step 14 has been processed,
+16. **Hand the results to `generate-summary-report`.** `quality-control-engineer`
+    drafted the payload in step 14; once every failure in step 15 has been processed,
     fill in which bugs were new vs. reopened/updated and render the HTML report.
-16. **Report back** — pass/fail totals, bugs created vs. updated, any errors. Filed bugs
+17. **Report back** — pass/fail totals, bugs created vs. updated, any errors. Filed bugs
     already surface in the query hierarchy `create-bug-queries` set up back in Phase 2
     — there is nothing further to provision here.
 
