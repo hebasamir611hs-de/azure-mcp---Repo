@@ -63,7 +63,8 @@ def test_create_bug_title_falls_back_to_error_message_when_no_actual_result(mock
         error_message="AssertionError: expected True, got False",
     ))
 
-    assert "AssertionError: expected True, got False" in result["title"]
+    assert "Automated test failure: test_x" in result["title"]
+    assert "AssertionError" not in result["title"]
 
 
 @patch("core.bugs.get_azure_client")

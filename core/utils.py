@@ -1,5 +1,5 @@
 """
-core/utils.py — Shared helpers, validators, and Azure client factory.
+core/utils.py — Shared helpers, validators, classifiers, and Azure client factory.
 
 All functions here are pure utilities with no MCP or Azure I/O side-effects,
 except get_azure_client() which constructs a client from environment vars.
@@ -88,6 +88,22 @@ VALID_EXEC_TYPES = ["Automated", "Manual"]
 VALID_IMPACT_AREAS = ["UI", "Backend", "Both"]
 
 
+def normalize_execution_type(value: str) -> str:
+    """
+    Normalizes execution-type vocabulary to the canonical attribute values.
+    The tag taxonomy (woqod-standards.md Axis 1b) uses 'Automation'/'Manual';
+    the work-item attribute uses 'Automated'/'Manual'. Accept both, emit one.
+    """
+    if not value:
+        return ""
+    v = value.strip().lower()
+    if v in ("automation", "automated", "auto"):
+        return "Automated"
+    if v == "manual":
+        return "Manual"
+    return value.strip()
+
+
 def validate_tc_attributes(
     title: str, steps_list: list, expected_list: list,
     test_type: str, scenario: str, execution_type: str,
@@ -132,8 +148,14 @@ def assess_priority(pbi_title: str, pbi_ac: str, test_type: str, scenario: str) 
     Returns: 1 (Critical), 2 (High), 3 (Medium), 4 (Low)
     """
     critical_keywords = [
+        # English
         "payment", "security", "authentication", "checkout",
-        "login", "critical", "must", "billing"
+        "login", "critical", "must", "billing", "top-up", "topup",
+        "wallet", "balance", "refund",
+        # Arabic — the project is bilingual; money/access flows must hit P1
+        # regardless of PBI language (woqod-standards.md → Money & Payment Rules).
+        "دفع", "سداد", "فوترة", "شحن", "رصيد", "محفظة",
+        "تسجيل الدخول", "دخول", "مصادقة", "أمان", "أمن", "استرداد"
     ]
     pbi_text = (pbi_title + " " + pbi_ac).lower()
 
@@ -192,6 +214,104 @@ def infer_tc_attributes_from_title(title: str) -> dict:
         "execution_type": execution_type,
         "impact_area": impact_area,
         "source": "inferred_from_title"
+    }
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# TC CLASSIFICATION FROM TAGS (current taxonomy) — shared by Skills 5 & 7
+# ─────────────────────────────────────────────────────────────────────────────
+
+# Axis 4 Category tags (woqod-standards.md) → coverage-matrix test_type
+_CATEGORY_TO_TEST_TYPE = {
+    "ui": "UI",
+    "compatibility": "Functional",
+    "auth": "Functional",
+    "functional-high": "Functional",
+    "functional-low": "Functional",
+    "api": "Functional",
+    "edge": "Edge",
+}
+
+_CANONICAL_CATEGORIES = {
+    "ui": "UI", "compatibility": "Compatibility", "auth": "Auth",
+    "functional-high": "Functional-High", "functional-low": "Functional-Low",
+    "api": "API", "edge": "Edge",
+}
+
+
+def classify_tc_from_tags(tag_list: list, title: str) -> dict:
+    """
+    Derives test_type / scenario / execution_type / impact_area / category for a
+    test case from its Azure tags under the CURRENT unified tagging model
+    (woqod-standards.md → Tag Taxonomy), with legacy-tag and title-inference
+    fallbacks per attribute.
+
+    Sources, in priority order per attribute:
+      1. Current taxonomy tags — Category (Axis 4): UI/Compatibility/Auth/
+         Functional-High/Functional-Low/API/Edge; Execution method (Axis 1b):
+         Automation/Manual.
+      2. Legacy attribute tags (older injections): UI/Functional/Edge/Intensive,
+         positive/negative, Automated/Manual, Backend/Both.
+      3. Title-keyword inference (infer_tc_attributes_from_title).
+
+    Returns:
+        {test_type, scenario, execution_type, impact_area,
+         category (canonical Axis-4 value or None), source}
+    """
+    tags_lower = [t.strip().lower() for t in (tag_list or []) if t and t.strip()]
+    inferred = infer_tc_attributes_from_title(title or "")
+    used_tags = False
+
+    # ── Category / test_type ────────────────────────────────────────────────
+    category = None
+    test_type = None
+    for t in tags_lower:
+        if t in _CATEGORY_TO_TEST_TYPE:
+            # Prefer the most specific category tag; first match wins except
+            # plain 'ui' loses to a more specific functional/edge category.
+            if category is None or category == "UI":
+                category = _CANONICAL_CATEGORIES[t]
+                test_type = _CATEGORY_TO_TEST_TYPE[t]
+    if test_type is None and "intensive" in tags_lower:   # legacy
+        test_type = "Intensive"
+    if test_type is None and "functional" in tags_lower:  # legacy
+        test_type = "Functional"
+    if test_type is not None:
+        used_tags = True
+    else:
+        test_type = inferred["test_type"]
+
+    # ── Scenario (never emitted as a tag in the current model) ──────────────
+    if "positive" in tags_lower:      # legacy
+        scenario, used_tags = "positive", True
+    elif "negative" in tags_lower:    # legacy
+        scenario, used_tags = "negative", True
+    else:
+        scenario = inferred["scenario"]
+
+    # ── Execution type — Axis 1b (Automation/Manual) or legacy (Automated) ──
+    if "automation" in tags_lower or "automated" in tags_lower:
+        execution_type, used_tags = "Automated", True
+    elif "manual" in tags_lower:
+        execution_type, used_tags = "Manual", True
+    else:
+        execution_type = inferred["execution_type"]
+
+    # ── Impact area (legacy tags only; 'UI' is ambiguous with Category) ─────
+    if "backend" in tags_lower:
+        impact_area = "Backend"
+    elif "both" in tags_lower:
+        impact_area = "Both"
+    else:
+        impact_area = inferred["impact_area"]
+
+    return {
+        "test_type": test_type,
+        "scenario": scenario,
+        "execution_type": execution_type,
+        "impact_area": impact_area,
+        "category": category,
+        "source": "tags" if used_tags else "inferred_from_title",
     }
 
 

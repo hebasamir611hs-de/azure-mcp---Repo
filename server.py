@@ -13,6 +13,12 @@ Architecture: core/utils.py  → shared helpers
 Credentials: loaded exclusively from .env — never hard-coded here or in mcp-config.json.
 """
 
+# ─── SSL: use OS-native trust store (Windows cert store, macOS Keychain, Linux ca-certs) ───
+# Must happen BEFORE any HTTP/SSL import. Fixes corporate-proxy / VPN SSL errors where
+# Python's bundled certifi misses the corporate root CA.
+import truststore
+truststore.inject_into_ssl()
+
 import os
 import sys
 from pathlib import Path

@@ -206,16 +206,21 @@ def get_pbis_from_sprint(iteration_path: str) -> dict:
     Fetches all PBIs from a sprint, validates them for TC readiness,
     and auto-detects language per PBI.
 
-    Validation: skips PBIs with empty Description or missing Acceptance Criteria.
+    Validation: a PBI is skipped ONLY if its Description is missing/empty.
+    Missing Acceptance Criteria does NOT skip the PBI — it stays valid and is
+    flagged (has_ac=False, validation_note set) so the analysis derives scope
+    from the Description and states its assumptions explicitly at the review gate.
 
     Returns:
         {
             "count": int,
             "valid_count": int,
             "skipped_count": int,
+            "no_ac_count": int,
             "arabic_count": int,
             "english_count": int,
-            "pbis": [{id, title, ac, description, language, is_valid, validation_reason}],
+            "pbis": [{id, title, ac, description, language, is_valid,
+                      has_ac, validation_note, validation_reason}],
             "skipped_pbis": [...]
         }
     """
@@ -247,7 +252,7 @@ def get_pbis_from_sprint(iteration_path: str) -> dict:
         work_items = client.get_work_items(ids=ids, expand="All")
 
         pbis, skipped_pbis = [], []
-        arabic_count = english_count = 0
+        arabic_count = english_count = no_ac_count = 0
 
         for item in work_items:
             title = item.fields.get('System.Title', '')
@@ -258,21 +263,28 @@ def get_pbis_from_sprint(iteration_path: str) -> dict:
 
             is_valid = True
             validation_reason = ""
+            has_ac = bool(ac and ac.strip())
 
+            # Description is the hard requirement. Missing AC does NOT skip the
+            # PBI — the analysis proceeds from the Description with explicit
+            # assumptions (flagged via has_ac / validation_note below).
             if not description or not description.strip():
                 is_valid = False
                 validation_reason = "Missing or empty Description field"
-            elif not ac or not ac.strip():
-                is_valid = False
-                validation_reason = "Missing or empty Acceptance Criteria"
 
             pbi_data = {
                 "id": item.id,
                 "title": title,
-                "ac": ac if ac else "[No AC provided]",
+                "ac": ac if has_ac else "[No AC provided]",
                 "description": description if description else "[No Description provided]",
                 "language": detected_lang,
                 "is_valid": is_valid,
+                "has_ac": has_ac,
+                "validation_note": (
+                    "" if has_ac else
+                    "No Acceptance Criteria — derive scope from the Description and "
+                    "STATE ALL ASSUMPTIONS explicitly; the review gate must see them."
+                ),
                 "validation_reason": validation_reason if not is_valid else ""
             }
 
@@ -280,6 +292,7 @@ def get_pbis_from_sprint(iteration_path: str) -> dict:
                 pbis.append(pbi_data)
                 arabic_count += 1 if detected_lang == "ar" else 0
                 english_count += 1 if detected_lang == "en" else 0
+                no_ac_count += 0 if has_ac else 1
             else:
                 skipped_pbis.append(pbi_data)
 
@@ -287,6 +300,7 @@ def get_pbis_from_sprint(iteration_path: str) -> dict:
             "count": len(work_items),
             "valid_count": len(pbis),
             "skipped_count": len(skipped_pbis),
+            "no_ac_count": no_ac_count,
             "arabic_count": arabic_count,
             "english_count": english_count,
             "pbis": pbis,
