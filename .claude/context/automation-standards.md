@@ -3,8 +3,8 @@
 > The contract for the test-automation layer. Every automation agent and skill reads
 > this before writing a line of code. It defines the framework structure, naming, the
 > locator strategy, wrapper/Page-Object rules, reporting, and how automation maps back
-> to the QA test cases. Project/business facts live in `@.claude/context/woqod-background.md`;
-> QA tagging/IDs live in `@.claude/context/woqod-standards.md`. This file governs **how
+> to the QA test cases. Project/business facts and QA tagging/IDs come from the
+> project context — ask the user if not provided. This file governs **how
 > the automation is built**, not what to test.
 
 ---
@@ -36,9 +36,16 @@ If `./automation/` does not exist yet, the correct move is to run
 | **Mobile** (app — iOS + Android) | **Appium** | Python 3.11+ | **pytest** | **Allure** + screen recording |
 
 - One runner everywhere: **pytest**. One report everywhere: **Allure**.
-- Surface is chosen **per feature**, from the WOQOD Service ↔ Platform matrix
-  (`woqod-background.md`). A feature on the app → mobile/Appium; a feature on a website
-  or CMS → web/Playwright. A feature on both → a test in each tree, shared step intent.
+- Surface is chosen **per feature**, per the project's service ↔ platform mapping —
+  ask the user when a feature's surface is unclear. A feature on the app →
+  mobile/Appium; a feature on a website or CMS → web/Playwright. A feature on both →
+  a test in each tree, shared step intent.
+- **API accuracy — docs over memory.** When unsure about a Playwright, Appium, pytest,
+  or Allure API (signature, option name, deprecation), consult the **official
+  documentation** (playwright.dev/python, appium.io, docs.pytest.org,
+  allurereport.org) via WebFetch/WebSearch rather than coding from training memory.
+  *(An offline docs snapshot as a local RAG source is under consideration; until then,
+  the online docs are the reference.)*
 
 ---
 
@@ -65,34 +72,39 @@ automation/
 │     ├─ waits.py             # explicit-wait helpers
 │     └─ logger.py
 ├─ web/
-│  ├─ pages/
-│  │  └─ <feature>/           # ONE FOLDER PER FEATURE (e.g. contact_us/) with __init__.py
-│  │     └─ <page>_page.py    # Page Objects — one class per page/component
-│  └─ tests/
-│     └─ <feature>/           # ONE FOLDER PER FEATURE (e.g. contact_us/) with __init__.py
-│        ├─ test_<area>.py    # group related cases by sub-area/story — many tests per module
-│        └─ test_<area>.py
+│  ├─ pages/                  # Page Objects — grouped by page/module, never flat
+│  │  ├─ components/          #   shared cross-page component objects (header, nav, OTP modal)
+│  │  └─ login/               #   e.g. pages/login/login_page.py
+│  └─ tests/                  # pytest tests — mirrors pages/, one folder per page/module
+│     └─ login/               #   e.g. tests/login/test_login.py — ALL login cases in ONE module
 ├─ mobile/
-│  ├─ screens/
-│  │  └─ <feature>/           # one folder per feature; one class per screen
-│  └─ tests/
-│     └─ <feature>/           # one folder per feature, modules grouped by sub-area
+│  ├─ screens/                # Screen Objects — grouped by screen/module, never flat
+│  │  ├─ components/          #   shared cross-screen component objects
+│  │  └─ tag_topup/           #   e.g. screens/tag_topup/tag_topup_screen.py
+│  └─ tests/                  # mirrors screens/
+│     └─ tag_topup/           #   e.g. tests/tag_topup/test_tag_topup.py — ALL top-up cases in ONE module
 └─ reports/                   # generated allure-results / allure-report (git-ignored)
 ```
 
 Rules:
-- **Organize by feature, then sub-area.** Both `pages/`/`screens/` and `tests/` are
-  split into **one folder per feature** (e.g. `contact_us/`), each with an `__init__.py`.
-  Page/Screen Objects for that feature live in its `pages/<feature>/` (or
-  `screens/<feature>/`) folder; tests live in `tests/<feature>/`.
-- **Group tests by sub-area, never one file per test case.** Inside a feature's test
-  folder, group related cases into a module by sub-area/story
-  (`test_submission.py`, `test_validation.py`, `test_attachments.py`, …) with **many
-  test functions per module**. pytest runs test *functions*, not files — a file per
-  case just fragments the suite. (Markers + the per-test traceability ID still map each
-  function back to its Azure case.)
 - **`core/` is generic.** Nothing in `core/` references WOQOD, a specific page, or a
   specific feature. Feature knowledge lives only in `pages/`, `screens/`, and `tests/`.
+- **Group by page/module — never flat.** Every Page/Screen Object and every test module
+  lives in a folder named after the page/module it belongs to (`pages/login/`,
+  `tests/login/`), with matching folder names between the object tree and the test tree
+  (each folder gets an `__init__.py`). Folder names are snake_case; a service-scoped
+  feature uses `<service>_<feature>` (e.g. `tag_topup`, `fahes_booking`). The folder is
+  created with the first artifact for that page; new artifacts for an already-covered
+  page go **into the existing folder**. The one exception to page-naming: reusable
+  cross-page component objects (header, nav, OTP modal) live in `pages/components/` /
+  `screens/components/` — never flat and never duplicated into page folders.
+- **One spec module per page/feature — NEVER one file per test case.** The single test
+  module's name mirrors its folder: `tests/<page>/test_<page>.py` (e.g.
+  `tests/login/test_login.py`, `tests/tag_topup/test_tag_topup.py`). All test cases for
+  a page/feature accumulate in that one module. The existing module is identified **by
+  the page folder**: if any `test_*.py` already exists in `tests/<page>/`, append to it
+  regardless of its exact name — creating a second module, or a new file per case, is a
+  defect.
 - **Tests never touch raw Playwright/Appium.** A test calls Page/Screen-Object methods,
   which call `BasePage`/`BaseScreen` wrappers. If a test imports `playwright` or
   `appium` directly, that's a defect.
@@ -132,8 +144,16 @@ Hard rules:
 ## Locator strategy — priority order
 
 Locators are **extracted on demand** by the `extract-locators` skill (never hand-guessed
-in bulk, never committed as static placeholder dumps). When choosing a locator, prefer
-the highest available tier:
+in bulk, never committed as static placeholder dumps).
+
+**Fetch via MCP — required mechanism.** Locator discovery drives the live app through
+the MCP servers: the **Playwright MCP** for web (DOM + accessibility tree) and the
+**Appium/mobile MCP** for the app (UI hierarchy). MCP inspection is far more
+token/cost-efficient than screenshot-driven discovery or ad-hoc throwaway scripts —
+prefer the text-based tree/find tools over screenshots. Fall back to a scripted
+inspection only when the relevant MCP server is unavailable, and say so explicitly.
+
+When choosing a locator, prefer the highest available tier:
 
 **Web (Playwright):**
 1. `data-testid` / `data-test` (ask the team to add these where missing — most stable)
@@ -165,14 +185,21 @@ Locator hygiene:
   state queries (`error_message_text()`). It returns the next Page Object on navigation.
 - **No assertions, no test data, no waits-by-sleep** inside Page Objects.
 - Reusable cross-feature components (header, nav, OTP modal) get their own component
-  object and are composed in, not copy-pasted.
+  object in `pages/components/` / `screens/components/` and are composed in, not
+  copy-pasted.
 
 ---
 
 ## Test structure & naming
 
-- One test module per feature: `test_<service>_<feature>.py`
-  (e.g. `test_tag_topup.py`, `test_fahes_booking.py`).
+- One test module per page/feature, inside that page's folder, module name mirroring
+  the folder name: `tests/<page>/test_<page>.py`
+  (e.g. `tests/tag_topup/test_tag_topup.py`, `tests/fahes_booking/test_fahes_booking.py`,
+  `tests/login/test_login.py`).
+- **All test cases for a page/feature live in that one module.** A new case for an
+  already-covered page is **appended** to the existing module as a new test function —
+  never a new file. Identify the module by the folder: append to whatever `test_*.py`
+  already exists in `tests/<page>/`. One-file-per-test-case is a defect.
 - One test function per scenario, named for intent:
   `test_topup_with_expired_card_is_rejected`.
 - **AAA shape:** Arrange (fixtures/preconditions) → Act (Page-Object calls) →
@@ -185,36 +212,19 @@ Locator hygiene:
 - Every test carries the QA **traceability ID** in a marker/docstring
   (`# TAG-TOPUP-TC-014`) so an automated test maps back to its source case.
 
-### pytest markers ↔ QA tags
+### pytest markers ↔ QA lifecycle tags
 
-Markers **mirror the Azure tags 1:1** (`woqod-standards.md`) so the suite slices the
-same way the test cases do. A marker **never introduces a tag key that isn't in the
-taxonomy** — it reuses the Lifecycle and Platform axis values exactly.
+Markers mirror the Azure lifecycle tags (from the project's tag taxonomy — ask the
+user if not provided) so the suite slices the same way the test cases do:
 
 | Marker | Mirrors tag | Meaning |
 |---|---|---|
-| `@pytest.mark.regression` | `Regression` | The **critical re-run subset** — run on every change. A subset of the automated suite, not all of it. |
-| `@pytest.mark.web` · `@pytest.mark.ios` · `@pytest.mark.android` · `@pytest.mark.control_panel` | Platform (`Web` / `IOS` / `Android` / `Control_Panel`) | Surface selector — mirrors the Platform axis exactly. |
+| `@pytest.mark.regression` | `Regression` | Core automated suite — the default automation backlog. |
+| `@pytest.mark.smoke` | `Smoke` | Minimal critical path (login → top-up → fuel). |
+| `@pytest.mark.sanity` | `Sanity` | Narrow post-fix checks. |
+| `@pytest.mark.web` / `@pytest.mark.mobile` | Platform | Surface selector. |
 
-The **automated suite itself = every case tagged `Automation`** (the broad automatable set
-the Automation engineer classified pre-injection); a `Manual`-tagged case has no test at
-all. So there is **no `automation` / `manual` marker** — every test that exists is by
-definition an `Automation` case, and `Manual` cases are never authored. `regression` marks
-the critical subset *within* the suite. There are no `smoke` / `sanity` markers (those
-tags were removed). Register every marker in `pytest.ini` (no unknown-marker warnings).
-
----
-
-## Automation classification pass (before injection)
-
-Before the QA Manager injects an approved set, the surface's Automation engineer reviews
-**every** case and assigns the **`Automation` / `Manual`** execution-method tag (Axis 1b
-in `woqod-standards.md`) — exactly one per case, **100% coverage**, never both. **Bias
-toward `Automation`:** tag `Manual` only for cases that genuinely can't be automated
-(physical/hardware steps, purely visual checks, CAPTCHA, human judgement). Align each
-case's `execution_type` to match. The automation build then sources **every
-`Automation`-tagged case**, not just `Regression`. This pass is pure judgement — no
-framework code is written and the case content is never rewritten.
+Register every marker in `pytest.ini` (no unknown-marker warnings).
 
 ---
 
@@ -225,14 +235,30 @@ the app looked like*:
 
 - **Allure** is the aggregator: `pytest --alluredir=reports/allure-results`, served with
   `allure serve` / `allure generate`.
+- **Attachment is the deliverable, not the file.** A screenshot/video sitting in a
+  folder is NOT evidence — both must land in the failing test's Allure entry via
+  `allure.attach(...)` / `allure.attach.file(...)`. The two attach at different points:
+  the **screenshot** in the `pytest_runtest_makereport` failure hook, the **video/
+  recording** in fixture teardown (see the Video bullet — it does not exist earlier).
+  Wiring that makes this work: implement `pytest_runtest_makereport` as a hookwrapper
+  that stashes the call-phase report on the item (e.g. `item.rep_call`); the browser/
+  driver fixture teardown reads that flag to decide whether to attach the video. A
+  failing test whose Allure entry lacks its screenshot **and** video is a framework
+  defect: fix the wiring before trusting the report.
 - **Screenshots:** auto-captured **on every failure** (conftest hook) and on demand via
-  `screenshot()`; attached to the failing Allure step.
+  `screenshot()`; attached to the failing Allure step (`attachment_type=PNG`).
 - **Video:**
   - Web — Playwright context `record_video_dir` always on; trace
     (`tracing.start(screenshots, snapshots, sources)`) retained **on failure**.
+    ⚠ Playwright only finalizes the video file when the **context closes** — attach it
+    in fixture teardown *after* `context.close()`, via `page.video.path()`, guarded by
+    the test's failure status.
   - Mobile — Appium screen recording (`start_recording_screen` /
     `stop_recording_screen`) around each test, attached **on failure** (retain-on-failure
     by default to save space; configurable to always-on).
+- **Prove it once:** after scaffolding (or any change to the failure hooks), run one
+  deliberately failing probe test and open the report — confirm the screenshot and the
+  video are attached to the failing entry, then delete the probe.
 - **Structure the report:** use Allure `epic`/`feature`/`story` from the Service/Feature,
   `severity` from QA priority (P1→blocker … P4→minor), and `@allure.title` from the test
   case title.
@@ -246,37 +272,76 @@ the app looked like*:
 - All environment data (base URLs per site, Appium server URL, device/OS caps, test
   credentials) comes from **env / `.env`** via `config/settings.py`. **Never** hard-code
   URLs, caps, or credentials in tests or Page Objects.
+- **Web viewport default = 1920×1080 (Full HD).** Set once in the browser context
+  factory (`core/web/browser.py`) — not per test — and overridable via env
+  (`VIEWPORT_WIDTH` / `VIEWPORT_HEIGHT`). Responsive/mobile-web cases override it
+  per test through the fixture (the browser/context fixture must accept a per-test
+  viewport parameter, e.g. via indirect parametrization or a `viewport` marker), never
+  by editing the default. Locator extraction inspects the page at this same default
+  viewport so harvested locators match the runtime layout.
 - `.env.example` is committed *inside the generated framework* (which itself is
-  git-ignored here) as a template; the real `.env` is never committed anywhere.
-- Default environment = **QA/UAT** (confirm with the team per `woqod-background.md`).
+  git-ignored here) as a template; the real `.env` is never committed anywhere. It must
+  enumerate **every** value the framework reads, each with a realistic example: base URL
+  per site, environment type (`ENV=dev|staging|uat|prod`), credential placeholders,
+  viewport overrides, Appium server URL + device capabilities.
+- **Scaffolding ends with a configuration summary.** The final reply of
+  `scaffold-automation-framework` must list every configuration value the framework
+  needs, pre-filled with example values, so the user knows exactly what to fill in
+  (see that skill's report step).
+- Default environment = **QA/UAT** (confirm with the team).
+
+---
+
+## Structure & redundancy scan — after every batch
+
+After **every** batch of test-case additions or changes, run a scan of the framework
+(the `automate-test-case` skill runs this as a mandatory step) and fix findings
+**before** reporting done:
+
+1. **Structure** — every Page/Screen Object and test module sits in its per-page folder
+   (`pages/<page>/`, `tests/<page>/`, names mirrored between the two trees); naming
+   follows the conventions above; no flat/stray files at the tree root; no
+   one-file-per-test-case modules — cases for the same page merged into its single
+   module.
+2. **Redundancy** — no two tests cover the same case (same traceability ID, or same
+   Arrange/Act/Assert intent under different names); no duplicated locator constants for
+   the same element across objects; no copy-pasted Page/Screen-Object methods that
+   should be a shared component object or base helper.
+3. **Contract** — no raw driver imports in tests, no `sleep()`, no locators in tests,
+   all markers registered in `pytest.ini`; the web browser-factory viewport default is
+   still 1920×1080 (env-overridable) — per-test overrides go through the fixture, the
+   default is never edited.
+
+Report the scan outcome explicitly: *clean*, or what was found and how it was fixed.
 
 ---
 
 ## Definition of Done (an automated test)
 
 A test is done only when ALL hold:
-- Lives in the right tree (`web/` or `mobile/`), imports **no** raw driver.
+- Lives in the right per-page folder of the right tree
+  (`web/tests/<page>/` or `mobile/tests/<screen>/`), inside that page's **single** test
+  module; imports **no** raw driver.
 - All interactions go through Page/Screen Objects → wrappers; **zero `sleep()`**.
-- Locators came from `extract-locators` and follow the priority order.
+- Locators came from `extract-locators` (MCP-driven) and follow the priority order.
 - Carries its QA traceability ID and the correct markers (`regression` etc.).
 - Independent, idempotent, parallel-safe; concrete data mirrored from the QA case.
 - Produces a clean Allure entry: titled, severity-tagged, steps named, screenshot+video
   attached on failure.
+- The post-batch **structure & redundancy scan** is clean.
 - Passes locally on a clean checkout (`pytest -m smoke` green) before it's called done.
 
 ---
 
-## Azure DevOps integration — READ enabled · post-back DEFERRED
+## Azure DevOps integration — DEFERRED
 
-- **READ (enabled).** The automation engineers **source the backlog from Azure**: they
-  read a test suite via `mcp__azure-devops__get_test_cases_from_suite` (`plan_id`,
-  `suite_id`) and build from the cases tagged **`Automation`** (the full automatable set;
-  `Regression` is the critical re-run subset within it). They may still author from the
-  approved chat set when no suite exists yet.
-- **POST-BACK (deferred).** Writing results back to Azure (run outcomes,
-  `get_test_outcome_summary`, `review_test_coverage`) stays **off** until the user
-  explicitly enables it. Until then the engineers **read** cases but **write nothing** to
-  Azure.
+The loop closes later, after the framework is proven standalone. When enabled:
+- **Source the backlog** from Azure cases tagged `Regression` (the existing automation
+  candidates) instead of the chat set.
+- **Post results back** via the MCP audit tools (`get_test_outcome_summary`,
+  `review_test_coverage`).
+Until the user explicitly turns this on, automation runs **standalone** — tests are
+authored from the approved chat/QA set, and nothing reads from or writes to Azure.
 
 ---
 *Living document. Refine as the framework matures — but keep `core/` generic and keep

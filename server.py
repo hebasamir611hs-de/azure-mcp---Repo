@@ -73,7 +73,6 @@ from core.discovery import (
 )
 from core.reporting import (
     create_work_item_query,
-    ensure_bug_query_hierarchy,
     get_query_summary,
     get_test_outcome_summary,
     get_test_run_outcome_summary,
@@ -84,17 +83,15 @@ from core.engines import (
     execute_qa_feedback,
     add_full_test_case,
 )
-from core.bugs import (
-    find_existing_bug,
-    create_bug,
-    add_bug_occurrence,
-)
 from core.analysis import (
     review_test_coverage,
     generate_qa_report,
 )
 from core.output_manager import (
     review_uat_document,
+)
+from core.uat_builder import (
+    create_uat_document_from_sprint,
 )
 from core.test_planner import (
     create_test_plan,
@@ -125,7 +122,6 @@ mcp.tool()(get_pbis_from_sprint)
 
 # ── Skill 2: Query Creation (core/reporting.py) ──────────────────────────────
 mcp.tool()(create_work_item_query)
-mcp.tool()(ensure_bug_query_hierarchy)
 
 # ── Skill 3: Query Summary (core/reporting.py) ───────────────────────────────
 mcp.tool()(get_query_summary)
@@ -148,9 +144,16 @@ mcp.tool()(generate_qa_report)
 mcp.tool()(execute_qa_feedback)
 
 # ── Skill 11a: UAT Review ────────────────────────────────────────────────────
-# UAT document *creation* is not an MCP tool — the drafter subagent owns it
-# (see .claude/skills/build-uat-doc). The MCP only parses docs for review.
+# Curated UAT docs (from signed-off, UAT-tagged test cases) are still the
+# drafter subagent's job (see .claude/skills/build-uat-doc). This MCP tool only
+# parses an existing doc for review.
 mcp.tool()(review_uat_document)
+
+# ── Skill 11b: UAT Document Generation — whole sprint ────────────────────────
+# Mechanical template generator: builds a UAT .docx straight from every PBI's
+# requirement + acceptance criteria. No test-case derivation; tester fills in
+# Actual/Status/Comments.
+mcp.tool()(create_uat_document_from_sprint)
 
 # ── Skill 12: Test Plan Creation ──────────────────────────────────────────────
 mcp.tool()(create_test_plan)
@@ -163,11 +166,6 @@ mcp.tool()(create_test_suite_for_pbi)
 
 # ── Skill 15: Read All Test Cases from a Suite ───────────────────────────────
 mcp.tool()(get_test_cases_from_suite)
-
-# ── Bug Reporting: automated test failures → Azure DevOps (core/bugs.py) ────
-mcp.tool()(find_existing_bug)
-mcp.tool()(create_bug)
-mcp.tool()(add_bug_occurrence)
 
 
 if __name__ == "__main__":

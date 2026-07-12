@@ -16,17 +16,12 @@ coverage. Use for smoke / ad-hoc / "give me the critical ones" requests.
 > **No subagent here.** Unlike `analyze-pbi`, do NOT delegate to the `qa-engineer`
 > subagent — its mandate is maximum coverage, which contradicts a quick subset (and
 > the spawn overhead defeats the speed goal). Derive the subset inline.
->
-> **Not an analysis mode.** The Normal / Deep **modes** belong to `analyze-pbi` and are
-> two depths of a *full* analysis. `quick-test-cases` is neither — it is a deliberately
-> tiny prioritized subset, lighter than even Normal mode. If the user wants a real (if
-> lighter) full pass, that is **Normal mode in `analyze-pbi`**, not this skill.
 
 ## Procedure
 
-1. **Load context** — read `@.claude/context/woqod-background.md` if `$ARGUMENTS` is a
-   real feature/PBI needing project scope. (Pull the PBI with
-   `mcp__azure-devops__get_story_for_analysis` only if an ID was given.)
+1. **Load context** — if `$ARGUMENTS` is a real feature/PBI needing project scope,
+   take it from the task input — ask the user if background isn't provided. (Pull the
+   PBI with `mcp__azure-devops__get_story_for_analysis` only if an ID was given.)
 2. **Pick the sharp subset** — from `@.claude/context/analysis-framework.md`, select:
    - the **happy path** (the core successful journey),
    - the **top critical negatives** (money flow, auth, data-loss risks first),
@@ -34,14 +29,7 @@ coverage. Use for smoke / ad-hoc / "give me the critical ones" requests.
      reasoning briefly).
 3. **Format** each case per `@.claude/context/test-case-template.md`, including `Tags`.
    Money flows are always P1.
-4. **Detect automation surface (lightweight)** — quick scan of the Platform tags on
-   the produced subset. Classify as `Web` / `Mobile (IOS/Android)` / `Both` /
-   `Control_Panel` / `Unclear`. This is informational only here (no env prep is
-   triggered from a quick subset — the full run via `analyze-pbi` is the right place
-   for that), but it tells the user which automation MCP would apply later.
-5. **Output to chat** — and **state clearly that this is a subset, not full coverage.**
-   Include the detected surface in the closing note (e.g., *"Subset surface: Android
-   — full coverage via analyze-pbi will confirm."*).
+4. **Output to chat** — and **state clearly that this is a subset, not full coverage.**
 
 ## Hard boundary
 

@@ -75,11 +75,9 @@ def _create_test_case(
     Internal pipeline shared by create_arabic_test_case and create_english_test_case.
     Validates, auto-assesses missing attributes, and creates the work item.
 
-    extra_tags: the agent's full tag decision (Lifecycle + Service + Platform +
-    Category + optional business keyword, per woqod-standards.md) merged into
-    System.Tags alongside the single MCP provenance tag (Ai_MCP_Injected).
-    Injected verbatim — the MCP makes no tag decisions. Blank/duplicate entries
-    are ignored.
+    extra_tags: optional list of WOQOD-layer tags (e.g. UAT, Regression, Smoke,
+    platform/business keywords) merged into System.Tags alongside the auto
+    dimension tags. Blank/duplicate entries are ignored.
     """
     try:
         is_valid, error_msg = validate_tc_attributes(
@@ -104,14 +102,8 @@ def _create_test_case(
             execution_type = determine_execution_type(test_type, impact_area)
 
         xml_steps = format_azure_steps(steps_list, expected_list)
-        # Unified tagging model: the MCP is a dumb transport. It applies exactly
-        # ONE provenance tag (Ai_MCP_Injected) and passes through every tag the
-        # agent decided (extra_tags) verbatim. All tag *judgement* — lifecycle,
-        # service, platform, category, business — lives in the instruction files
-        # and is the agent's call, never the MCP's. (See woqod-standards.md → Tag
-        # Taxonomy.) test_type/scenario/execution_type/impact_area/language stay
-        # as validated attributes but are no longer emitted as tags.
-        tag_parts = ["Ai_MCP_Injected"]
+        lang_tag = language.upper()
+        tag_parts = ["Automated-By-AI", test_type, scenario, execution_type, impact_area, lang_tag]
         if extra_tags:
             seen = {t.lower() for t in tag_parts}
             for t in extra_tags:
@@ -201,9 +193,8 @@ def create_arabic_test_case(
         priority (int): 1=Critical, 2=High, 3=Medium, 4=Low (auto-assessed if 0)
         execution_type (str): 'Automated' | 'Manual' (auto-determined if empty)
         impact_area (str): 'UI' | 'Backend' | 'Both' (default: 'UI')
-        extra_tags (list[str]): The agent's decided tags (e.g. ['UAT', 'Regression',
-            'FAHES', 'Web', 'Functional-High']) merged verbatim into System.Tags as
-            queryable Azure tags, alongside the MCP's Ai_MCP_Injected provenance tag.
+        extra_tags (list[str]): Optional WOQOD-layer tags (e.g. ['UAT', 'Regression',
+            'CMS', 'APP-iOS']) merged into System.Tags as queryable Azure tags.
 
     Returns:
         {status, tags_applied, test_case_id, parent_id, title, description,
@@ -253,9 +244,8 @@ def create_english_test_case(
         priority (int): 1=Critical, 2=High, 3=Medium, 4=Low (auto-assessed if 0)
         execution_type (str): 'Automated' | 'Manual' (auto-determined if empty)
         impact_area (str): 'UI' | 'Backend' | 'Both' (default: 'UI')
-        extra_tags (list[str]): The agent's decided tags (e.g. ['UAT', 'Regression',
-            'FAHES', 'Web', 'Functional-High']) merged verbatim into System.Tags as
-            queryable Azure tags, alongside the MCP's Ai_MCP_Injected provenance tag.
+        extra_tags (list[str]): Optional WOQOD-layer tags (e.g. ['UAT', 'Regression',
+            'CMS', 'APP-iOS']) merged into System.Tags as queryable Azure tags.
 
     Returns:
         {status, tags_applied, test_case_id, parent_id, title, description,
@@ -293,9 +283,9 @@ def execute_qa_feedback(parent_id: int, language: str, feedback_items: list) -> 
         feedback_items (list[dict]): Each item:
             {comment, title, description, steps_list, expected_list,
              test_type, scenario, priority, execution_type, impact_area, tags}
-            tags (list[str], optional): the agent's decided tags (e.g. ['UAT',
-            'Regression', 'FAHES', 'Web', 'Functional-High']) merged verbatim
-            into System.Tags alongside the MCP's Ai_MCP_Injected provenance tag.
+            tags (list[str], optional): WOQOD-layer tags (e.g. ['UAT',
+            'Regression', 'CMS', 'APP-iOS']) merged into System.Tags as
+            queryable Azure tags alongside the auto dimension tags.
 
     Returns:
         {parent_id, total_feedback_items, created, errors_count,
@@ -349,10 +339,7 @@ def execute_qa_feedback(parent_id: int, language: str, feedback_items: list) -> 
 
             try:
                 xml_steps = format_azure_steps(steps_list, expected_list)
-                # Unified tagging model: MCP applies only the Ai_MCP_Injected
-                # provenance tag; every other tag is the agent's decision, passed
-                # through verbatim. No tag judgement happens here.
-                tag_parts = ["Ai_MCP_Injected"]
+                tag_parts = ["Automated-By-AI", test_type, scenario, execution_type, impact_area, language.upper()]
                 seen = {t.lower() for t in tag_parts}
                 for t in extra_tags:
                     t = (t or "").strip()

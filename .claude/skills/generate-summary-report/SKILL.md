@@ -24,9 +24,9 @@ How this skill fits the rest of the project — read before generating:
 - **Hard boundary on data.** Render **only** numbers returned by those tools or supplied
   by the user. **Never fabricate, estimate, or "fill in" a metric.** If a required value
   is missing, say so rather than inventing it.
-- **Terminology.** Service / suite / platform naming follows
-  `@.claude/context/woqod-standards.md` and `@.claude/context/woqod-background.md`; the
-  WOQOD report theme below is already aligned — keep it.
+- **Terminology.** Service / suite / platform naming comes from the project context and
+  the user-supplied payload — ask the user if a name is unclear; the WOQOD report theme
+  is defined in this skill below — keep it.
 - **Output.** Save the single `.html` file under a project reports location (e.g.
   `reports/`), and report the saved path back to the user.
 
