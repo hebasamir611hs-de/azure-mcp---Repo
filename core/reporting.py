@@ -18,7 +18,7 @@ from typing import List, Optional, Dict, Any
 
 import requests
 
-from core.utils import get_azure_client, handle_error
+from core.utils import handle_error
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -514,93 +514,6 @@ def get_query_summary(
     except Exception as e:
         error_result = handle_error(e, "get_query_summary")
         return error_result
-
-
-# ─────────────────────────────────────────────────────────────────────────────
-# SPRINT/FEATURE BUG QUERY HIERARCHY
-# ─────────────────────────────────────────────────────────────────────────────
-
-_BUG_QUERY_COLUMNS = ["Id", "Title", "State", "Severity", "AssignedTo", "Tags"]
-
-
-def ensure_bug_query_hierarchy(backlog_id: int) -> str:
-    """
-    Ensures the saved-query hierarchy for a feature's bugs exists in Azure DevOps:
-
-        Shared Queries/Bugs/Sprint bugs/<sprint_name>/<feature_name>
-        Shared Queries/Bugs/Sprint bugs/<sprint_name>/<feature_name> - Automation
-
-    Self-contained — fetches the backlog item's own System.Title (feature_name)
-    and System.IterationPath (sprint_name, last path segment) itself; the
-    caller only needs to know the PBI's work item ID.
-
-    Idempotent — creates only what's missing; never overwrites an existing
-    folder/query. The plain '<feature_name>' query is scoped to bugs for this
-    backlog item WITHOUT the 'Automated' tag (manually-filed bugs); the
-    '- Automation' query is scoped to bugs WITH the 'Automated' tag. Both match
-    via the backlog_id number appearing in the Bug's Title (create_bug()
-    prefixes every title with '[<backlog_id>] ...').
-
-    Intended to be triggered once per PBI, after its test cases have been
-    written (see the create-bug-queries skill) — not per bug filed. Also safe
-    to call standalone/repeatedly for backfill/repair.
-
-    Args:
-        backlog_id (int): The backlog item's (PBI's) work item ID.
-
-    Returns:
-        {
-            "status": "success" | "error",
-            "sprint_folder": str,
-            "general_query": {...},
-            "automation_query": {...},
-            "message": str
-        }
-    """
-    try:
-        org_url = os.getenv("AZURE_ORG_URL", "").rstrip("/")
-        project = os.getenv("AZURE_PROJECT")
-
-        client = get_azure_client()
-        backlog_item = client.get_work_item(backlog_id)
-        feature_name = backlog_item.fields.get("System.Title") or f"PBI {backlog_id}"
-        iteration = backlog_item.fields.get("System.IterationPath") or ""
-        sprint_name = iteration.split("\\")[-1] if iteration else "Unassigned"
-
-        safe_sprint = _sanitize_name(sprint_name)
-        safe_feature = _sanitize_name(feature_name)
-
-        sprint_folder = f"Shared Queries/Bugs/Sprint bugs/{safe_sprint}"
-        _ensure_folder_path(org_url, project, sprint_folder)
-
-        title_filter = f"[System.Title] CONTAINS '{backlog_id}'"
-
-        general = _ensure_query(
-            org_url, project, sprint_folder, safe_feature,
-            f"[System.WorkItemType] = 'Bug' AND {title_filter} AND NOT [System.Tags] CONTAINS 'Automated'",
-            _BUG_QUERY_COLUMNS,
-        )
-        automation = _ensure_query(
-            org_url, project, sprint_folder, f"{safe_feature} - Automation",
-            f"[System.WorkItemType] = 'Bug' AND {title_filter} AND [System.Tags] CONTAINS 'Automated'",
-            _BUG_QUERY_COLUMNS,
-        )
-
-        return json.dumps({
-            "status": "success",
-            "sprint_folder": sprint_folder,
-            "general_query": general,
-            "automation_query": automation,
-            "message": (
-                f"Bug query hierarchy ready under '{sprint_folder}': "
-                f"'{safe_feature}' ({general.get('status_action')}), "
-                f"'{safe_feature} - Automation' ({automation.get('status_action')})."
-            ),
-        }, indent=2)
-
-    except Exception as e:
-        error_result = handle_error(e, "ensure_bug_query_hierarchy")
-        return json.dumps(error_result, indent=2)
 
 
 # ─────────────────────────────────────────────────────────────────────────────
