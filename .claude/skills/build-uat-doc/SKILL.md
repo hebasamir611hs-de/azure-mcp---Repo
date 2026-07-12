@@ -1,6 +1,6 @@
 ---
 name: build-uat-doc
-description: Build the client-facing UAT .docx from a TEST SUITE — read the suite's test cases via the MCP (plan_id + suite_id), filter to the Tag=UAT acceptance cases in the agent layer, detect the case language (Arabic vs English), and delegate the .docx production to the drafter subagent (RTL for Arabic, LTR for English), then review and revise. Use when the user asks for a UAT document, client acceptance doc, or sign-off document. Precondition — the cases are already injected into Azure DevOps with UAT tags and collected in a test suite under a test plan; if not, route to analyze-pbi → inject-test-cases first.
+description: Build the client-facing UAT .docx from a TEST SUITE — read the suite's test cases via the MCP (plan_id + suite_id), filter to the Tag=UAT acceptance cases in the agent layer, and delegate the .docx production to the drafter subagent, then review and revise. Use when the user asks for a UAT document, client acceptance doc, or sign-off document. Precondition — the cases are already injected into Azure DevOps with UAT tags and collected in a test suite under a test plan; if not, route to analyze-pbi → inject-test-cases first.
 ---
 
 # Build UAT Document — Client Deliverable
@@ -20,32 +20,6 @@ If either is missing, ask before starting — the suite reader needs both.)
 > Division of labor: the **MCP reads** the raw suite data; **you filter** by tag;
 > the **`drafter` subagent formats** the client document. No injection happens here.
 
-## Language & Direction — Mandatory
-
-The document **language and direction follow the test cases**, not the user's
-prompt. Detect from the filtered set:
-
-- **Arabic test cases** (titles start with `التحقق من أنه` or contain
-  Arabic-script majority) → **full RTL** `.docx`. All headings, labels, table
-  headers, and body text are in Arabic. Document direction = right-to-left.
-  Translation reference for headings:
-  - "Cover Page" → "صفحة الغلاف"
-  - "Purpose & Scope" → "الغرض والنطاق"
-  - "How to Read This Document" → "كيفية قراءة هذا المستند"
-  - "UAT Test Cases" → "حالات اختبار قبول المستخدم"
-  - "Client Sign-off" → "اعتماد العميل"
-  - Table headers: `العنوان | المتطلبات المسبقة | الخطوات | النتيجة المتوقعة | الملاحظات`
-- **English test cases** (titles start with `Verify that`) → **full LTR**
-  `.docx`. Headings and labels in English as in the drafter's standard structure.
-  Table headers: `Title | Preconditions | Steps | Expected Result | Feedback`.
-
-**Never mix:** if the filtered set contains both languages, **stop and ask the
-user** which language to produce (or produce two documents — one per language).
-Never produce a half-Arabic / half-English document.
-
-The drafter subagent is responsible for applying the correct direction —
-pass the detected language as an explicit argument when delegating.
-
 ## Procedure
 
 1. **Confirm plan and suite IDs** — parse both from `$ARGUMENTS`. Do not guess.
@@ -57,18 +31,12 @@ pass the detected language as an explicit argument when delegating.
    - **If zero cases carry the `UAT` tag, stop and tell the user** — offer to either
      fix the tagging upstream (re-tag in Azure) or, on their explicit say-so, build
      from all suite cases instead. Never silently include untagged cases.
-4. **Detect language and delegate to the `drafter` subagent** — first apply the
-   *Language & Direction* rule above to classify the filtered set. Hand the drafter:
-   - The filtered cases (full JSON).
-   - The feature / PBI name.
-   - **The explicit language argument**: `language=ar` for Arabic (RTL) or
-     `language=en` for English (LTR). The drafter applies the direction throughout
-     the document — headings, body, table headers, page numbering, sign-off — per
-     the translation table above.
-   The drafter produces the client `.docx` per its own definition: cover page,
-   purpose & scope, how-to-read, the case table (*Title · Preconditions · Steps ·
-   Expected Result · Feedback*), and a client sign-off section. Plain business
-   language — no internal fields, priorities, or jargon.
+4. **Delegate to the `drafter` subagent** — hand it the filtered cases (full JSON)
+   plus the feature/PBI name and language (detect Arabic titles → RTL). The drafter
+   produces the client `.docx` per its own definition: cover page, purpose & scope,
+   how-to-read, the case table (*Title · Preconditions · Steps · Expected Result*),
+   and a client sign-off section. Plain business language — no internal fields,
+   priorities, or jargon.
 5. **Review** — call `mcp__azure-devops__review_uat_document` with `uat_file_path` =
    the `.docx` the drafter produced. Read the findings: missing acceptance scenarios,
    vague steps, client-readability issues.

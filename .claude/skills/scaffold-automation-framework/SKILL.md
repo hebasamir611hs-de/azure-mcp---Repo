@@ -19,8 +19,8 @@ user needs first.)
 ## Procedure
 
 1. **Read the contract** — `@.claude/context/automation-standards.md` (structure, stack,
-   wrapper API, locator strategy, reporting, Definition of Done). Also skim
-   `@.claude/context/woqod-background.md` for surfaces/services.
+   wrapper API, locator strategy, reporting, Definition of Done). Confirm the project's
+   surfaces/services with the user if unclear.
 2. **Pick the engineer** — delegate the build via the Agent tool:
    - `web` → **`senior-web-automation-eng`** (Playwright)
    - `mobile` → **`senior-mobile-automation-eng`** (Appium)
@@ -28,22 +28,48 @@ user needs first.)
      and Allure setup, and add their own `core/web` + `web/` or `core/mobile` + `mobile/`
      trees. Build the shared base once, then each tree.
 3. **Generate the tree** at `./automation/` exactly as in the contract: `README.md`,
-   `requirements.txt` (pinned), `pytest.ini` (markers + `--alluredir`), `.env.example`,
-   `conftest.py` (config + driver/browser fixtures + screenshot-on-failure + video/
-   recording + Allure hooks), `config/settings.py`, the generic `core/` wrappers
-   (`base_page.py` / `base_screen.py` — the only place raw driver is touched), and empty
-   `pages`/`screens` + `tests` trees.
+   `requirements.txt` (pinned), `pytest.ini` (markers + `--alluredir`), `.env.example`
+   (every config value, each with a realistic example — base URLs, `ENV=dev|staging|uat|prod`,
+   credential placeholders, viewport overrides, Appium caps), `conftest.py` (config +
+   driver/browser fixtures + screenshot-on-failure + video/recording **explicitly
+   attached into Allure** per the contract's reporting rules), `config/settings.py`, the
+   generic `core/` wrappers (`base_page.py` / `base_screen.py` — the only place raw
+   driver is touched; the web browser factory defaults the viewport to **1920×1080**,
+   env-overridable, and the browser/context fixture accepts a per-test viewport
+   override — indirect parametrization or a `viewport` marker — so responsive cases
+   never edit the default), and the `pages`/`screens` + `tests` trees (per-page
+   subfolders are created later by `automate-test-case` — do not pre-create empty page
+   folders).
 4. **Produce one working example** that exercises the whole stack end to end (wrapper →
-   Page/Screen Object → test → Allure with a screenshot). Web example should run with no
-   device. For mobile, include the example but document that execution needs an Appium
-   server + emulator/device; don't claim a green run you didn't observe.
-5. **Confirm it's git-ignored** — verify `automation/` and Allure/media artifacts are in
+   Page/Screen Object → test → Allure with a screenshot), placed in per-page folders per
+   the contract (e.g. `web/pages/example/`, `web/tests/example/`). Web example should run
+   with no device. For mobile, include the example but document that execution needs an
+   Appium server + emulator/device; don't claim a green run you didn't observe.
+5. **Prove the failure evidence** — run one deliberately failing probe test, generate the
+   Allure report, and confirm the screenshot **and** video are attached to the failing
+   entry; then delete the probe. If either attachment is missing, fix the conftest
+   wiring before reporting — evidence-on-failure is part of the scaffold's Definition of
+   Done. (For mobile without a device, state that this proof is pending the environment.)
+6. **Confirm it's git-ignored** — verify `automation/` and Allure/media artifacts are in
    this repo's `.gitignore`; if missing, add them. The framework must never be committed
    to this MCP repo.
-6. **Report** — what was generated, how to install (`pip install -r requirements.txt`,
+7. **Report** — what was generated, how to install (`pip install -r requirements.txt`,
    `playwright install` where relevant), and how to run (point at `run-automation`).
+   **End the reply with a Configuration Summary**: a table of every value the framework
+   needs — one row per `.env.example` key — pre-filled with example values, e.g.:
+
+   | Key | Example | What it is |
+   |---|---|---|
+   | `ENV` | `uat` | Target environment (`dev` / `staging` / `uat` / `prod`) — default is QA/UAT per the standards |
+   | `WEB_BASE_URL` | `https://uat.woqod.qa` | Web base URL for `ENV` |
+   | `TEST_USER` / `TEST_PASSWORD` | `qa.user@example.com` / `<fill-in>` | Test credentials (placeholders) |
+   | `VIEWPORT_WIDTH` × `VIEWPORT_HEIGHT` | `1920` × `1080` | Browser viewport (Full HD default) |
+   | `APPIUM_SERVER_URL` | `http://127.0.0.1:4723` | Appium server (mobile only) |
+   | `DEVICE_NAME` / `PLATFORM_VERSION` | `Pixel_8` / `14` | Device capabilities (mobile only) |
+
+   The user must be able to copy `.env.example` → `.env` and know exactly what to fill in.
 
 ## Hard boundary
 This skill generates structure + `core/` + one example only. It does **not** write the
 feature test suite (that's `automate-test-case`), does **not** run the full suite (that's
-`run-automation`), and makes **no** Azure DevOps calls (it generates structure only).
+`run-automation`), and makes **no** Azure DevOps calls (integration is deferred).
