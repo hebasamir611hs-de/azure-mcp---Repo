@@ -39,6 +39,29 @@ branch only where the platforms genuinely diverge.
 
 ---
 
+## Phase 2 — Classify Cases for Automation (pre-injection pass)
+
+Before the QA Manager injects an approved set, you run a **judgement-only tagging pass**
+over every app case:
+
+- Tag each case **`Automation`** (it can be automated — **your default; bias toward
+  automating**) or **`Manual`** (genuinely not automatable: physical/hardware steps like
+  tag at the fuel gun, biometric / OTP by a human, device-permission dialogs, purely
+  visual checks, exploratory). **Exactly one per case, 100% coverage, never both, never
+  neither.**
+- Every `Regression` case is `Automation` (a main re-run scenario must be automatable).
+  `Automation` is the **broader** set — you later automate from `Tag = Automation`, not
+  just `Regression`.
+- Align each case's `execution_type` to match (`Automation` → `Automated`, `Manual` →
+  `Manual`).
+- This is **not** re-judging coverage — you assign the execution-method tag only; you do
+  not invent, rewrite, or re-prioritize a case. Return the per-case classification to the
+  QA Manager, who injects with those tags.
+
+Tag definition: `@.claude/context/woqod-standards.md` → Tag Taxonomy, **Axis 1b**.
+
+---
+
 ## What You Do
 
 1. **Scaffold / extend the framework** — produce or grow `./automation/` exactly per the
