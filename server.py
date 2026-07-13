@@ -79,6 +79,7 @@ from core.discovery import (
 )
 from core.reporting import (
     create_work_item_query,
+    ensure_bug_query_hierarchy,
     get_query_summary,
     get_test_outcome_summary,
     get_test_run_outcome_summary,
@@ -98,6 +99,11 @@ from core.output_manager import (
 )
 from core.uat_builder import (
     create_uat_document_from_sprint,
+)
+from core.bugs import (
+    find_existing_bug,
+    create_bug,
+    add_bug_occurrence,
 )
 from core.test_planner import (
     create_test_plan,
@@ -136,6 +142,9 @@ mcp.tool()(get_query_summary)
 mcp.tool()(get_test_outcome_summary)
 mcp.tool()(get_test_run_outcome_summary)
 
+# ── Bug Query Hierarchy (core/reporting.py) ─────────────────────────────────
+mcp.tool()(ensure_bug_query_hierarchy)
+
 # ── Skills 3 & 4: Bilingual TC Engines ───────────────────────────────────────
 mcp.tool()(create_arabic_test_case)
 mcp.tool()(create_english_test_case)
@@ -172,6 +181,12 @@ mcp.tool()(create_test_suite_for_pbi)
 
 # ── Skill 15: Read All Test Cases from a Suite ───────────────────────────────
 mcp.tool()(get_test_cases_from_suite)
+
+
+# ── Bug Reporting: automated test failures → Azure DevOps (core/bugs.py) ────
+mcp.tool()(find_existing_bug)
+mcp.tool()(create_bug)
+mcp.tool()(add_bug_occurrence)
 
 
 if __name__ == "__main__":
