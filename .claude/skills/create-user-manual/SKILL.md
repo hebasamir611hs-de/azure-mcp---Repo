@@ -49,7 +49,7 @@ Generate the `.docx` (python-docx via Bash) with **exactly** these parts, in thi
 > - **iHorizons address:** `Zone 69, Street No. 318, Building No. 23, Manarat Lusail,
 >   9th floor, Office No. 904, Doha, Qatar`
 > - **Project name:** **variable** — read it from the project context
->   (`@.claude/context/woqod-background.md` → currently **WOQOD**). Never hard-code it.
+>   (`@.claude/context/active/background.md` → currently **WOQOD**). Never hard-code it.
 > - **Brand colors:** orange `#FFAB00` · blue `#01529B` (RGB 1/82/155).
 
 ### Front matter

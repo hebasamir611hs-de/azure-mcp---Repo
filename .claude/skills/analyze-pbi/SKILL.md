@@ -17,7 +17,7 @@ given, ask for it before starting.)
 
 ## Procedure
 
-1. **Load project context** — read `@.claude/context/woqod-background.md` so scope,
+1. **Load project context** — read `@.claude/context/active/background.md` so scope,
    surfaces, roles, and objects are in mind.
 2. **Read the PBI** — call `mcp__azure-devops__get_story_for_analysis` for `$ARGUMENTS`
    to pull the description and any acceptance criteria. This is the **only** MCP call
@@ -38,7 +38,7 @@ given, ask for it before starting.)
    (Lifecycle + Service + Platform + Category; `UAT` only on **direct acceptance**
    scenarios, `Regression` only on the feature's **MAIN functional** scenarios — never
    on deep field/boundary/edge cases — values from
-   `@.claude/context/woqod-standards.md`). The agent is reasoning-only; it never
+   `@.claude/context/active/standards.md`). The agent is reasoning-only; it never
    calls the MCP. *(Fallback: if the agent is unavailable, derive inline applying
    the exact same mode, framework, methodology, and format.)*
 5. **Relay the full set to chat** — the agent's final message comes back to you, not

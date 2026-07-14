@@ -24,7 +24,7 @@ coverage. Use for smoke / ad-hoc / "give me the critical ones" requests.
 
 ## Procedure
 
-1. **Load context** — read `@.claude/context/woqod-background.md` if `$ARGUMENTS` is a
+1. **Load context** — read `@.claude/context/active/background.md` if `$ARGUMENTS` is a
    real feature/PBI needing project scope. (Pull the PBI with
    `mcp__azure-devops__get_story_for_analysis` only if an ID was given.)
 2. **Pick the sharp subset** — from `@.claude/context/analysis-framework.md`, select:

@@ -17,6 +17,47 @@ automated tests through Playwright (web) and Appium (mobile) MCP servers.
 
 ---
 
+## At a glance
+
+| Component | Count | Where |
+|---|---|---|
+| Skills (procedures) | 15 | `.claude/skills/` |
+| Sub-agents | 5 | `.claude/agents/` |
+| Project context folders | per client project — switch with `python tools/set_project.py <name>` | `.claude/context/projects/` |
+| MCP servers registered | 3 (azure-devops, appium, playwright) | `.mcp.json` (copy from `.mcp.json.example`) |
+| Core Python modules | 8 (incl. `bugs.py` — Phase 3b) | `core/` |
+| **Unit tests (pytest)** | **117** — run: `pytest tests/ -q` | `tests/` |
+| Live E2E harness | 1 (`smoke_e2e.py` — inject → read-back → cleanup) | `scratch/` |
+
+**Rules of the gates** (the four invariants everything else hangs on):
+
+- Phase 1 never writes to Azure — the set lives in chat until the user signs off.
+- Phase 2 never invents cases — it classifies, transports, and decorates.
+- Phase 3 never re-judges coverage — the Azure set is the contract.
+- Phase 3b never fixes tests or filters failures — every failure gets logged (dedup,
+  not a human, prevents duplicates). It is the **only ungated writer**.
+
+**What's enabled vs deferred:**
+
+| Capability | Status |
+|---|---|
+| Azure PBI read · case injection (multi-project: team project derived from the parent PBI) · suite read | ✅ |
+| Coverage review sees MCP-injected cases (TestedBy links) | ✅ |
+| Tag-taxonomy classification in analytics (`classification_source` per case) | ✅ |
+| Description-only PBIs (no AC) flow through flagged, with mandatory assumptions | ✅ |
+| Automated bug filing on failed runs (Phase 3b) — dedup via `TC:<id>`, per-PBI query hierarchy | ✅ |
+| Plain-English bug titles enforced in code (title guard in `create_bug`) | ✅ |
+| Per-project context switching (ADR-002) | ✅ |
+| **Azure test-result post-back from automation runs** | 🔜 Deferred — next planned |
+| iOS automation on Windows/Linux host | ❌ Needs macOS — reported as ACTIONABLE |
+
+**Proven in production:** July 2026 — full sprint run on a live client sprint: 11 PBIs
+analyzed (10 of them Description-only, no AC), classified, and injected (~400 cases;
+sample PBI: 40/40 created, 30 Automation / 10 Manual, 0 rejected), then verified back
+through `review_test_coverage` with 100% tag-sourced classification.
+
+---
+
 ## Why this exists
 
 QA work on a sprint typically fragments across many tools: someone reads the PBI in
@@ -288,8 +329,8 @@ re-run subset within it.
 
 | File | Owns |
 |---|---|
-| `.claude/context/woqod-background.md` | Project / business facts: services, surfaces, roles. **May carry a local per-machine override** for a different project (marked with a `⚠️ LOCAL OVERRIDE` banner + `git skip-worktree`) — the filename is stable, the content is per-project |
-| `.claude/context/woqod-standards.md` | QA standards: IDs, priorities, tag taxonomy (including Axis 1b — Automation/Manual), test-case authoring language policy (follows the PBI's language). Same local-override mechanism |
+| `.claude/context/projects/<name>/background.md` | Project / business facts: services, surfaces, roles. One folder per project (woqod, asiacell, smart-khotba). Switch active project with `python tools/set_project.py <name>` |
+| `.claude/context/projects/<name>/standards.md` | QA standards: IDs, priorities, tag taxonomy (including Axis 1b — Automation/Manual), test-case authoring language policy (follows the PBI's language). Per-project |
 | `.claude/context/analysis-framework.md` | The 8 test categories + the 4-step edge methodology + Normal/Deep mode definitions |
 | `.claude/context/test-case-template.md` | Field-level test case format + Azure mapping |
 | `.claude/context/automation-standards.md` | Automation framework contract: structure, locator strategy, wrapper rules, Allure |
@@ -361,8 +402,7 @@ azure-mcp/
 ├─ requirements.txt
 ├─ .mcp.json                      # MCP registry (azure-devops + appium + playwright)
 ├─ CLAUDE.md                      # QA Manager prompt / orchestration rules
-├─ PROJECT_SUMMARY.md             # Compact executive summary of the system
-├─ README.md                      # This file
+├─ README.md                      # This file (incl. the "At a glance" executive summary)
 └─ .claude/
    ├─ agents/                     # Sub-agent definitions (5 agents)
    ├─ commands/                   # Slash commands (qa-mode, dev-mode)
@@ -516,7 +556,7 @@ Carried over from PR #4 (Analysis Modes + create-user-manual):
 
 - **Two analysis modes** (Normal default / Deep) across the framework, the agents,
   and the analyze-pbi / quick-test-cases skills.
-- **Automation / Manual tag taxonomy** (Axis 1b in `woqod-standards.md`) — every
+- **Automation / Manual tag taxonomy** (Axis 1b in `active/standards.md`) — every
   case gets exactly one, assigned by the Automation engineer in a pre-injection
   classification pass.
 - `create-user-manual` skill — fixed iHorizons-branded user manual template,

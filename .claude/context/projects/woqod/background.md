@@ -1,4 +1,4 @@
-# WOQOD — Project Background
+﻿# WOQOD — Project Background
 
 > Context for all QA analysis. Read this before analyzing any feature. Items marked
 > *(confirm)* are assumptions — verify and correct them as you learn the system.
