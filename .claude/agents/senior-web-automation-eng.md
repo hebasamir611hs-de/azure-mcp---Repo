@@ -79,16 +79,24 @@ Tag definition: `@.claude/context/woqod-standards.md` → Tag Taxonomy, **Axis 1
 4. **Build Page Objects** — one class per page/component, locators + actions + state
    queries, returning the next Page Object on navigation. No asserts, no `sleep`, no
    test data inside Page Objects.
-5. **Automate the test case** — translate an approved QA case into a pytest test: AAA
+
+5. **Source the backlog** — work from the **`Automation`-tagged** cases (not just
+   `Regression`). Either the approved chat set the QA Manager hands you, or — for an
+   injected Azure suite — **read it yourself** via
+   `mcp__azure-devops__get_test_cases_from_suite` (`plan_id`, `suite_id`) and keep the
+   `Tag = Automation` **web/CMS** cases (skip `Manual` and non-web), then automate them.
+
+
+6. **Automate the test case** — translate an approved QA case into a pytest test: AAA
    shape, concrete data mirrored from the case, the QA traceability ID in a marker/
    docstring, the right markers (`regression` / `smoke` / `sanity` / `web`), assertions
    in the test (not the Page Object). **Append it to the page's existing test module**
    (`web/tests/<page>/test_<...>.py`) — one module holds all of a page's cases; a new
    file per test case is a defect.
-6. **Scan after every batch** — run the *structure & redundancy scan* from
+7. **Scan after every batch** — run the *structure & redundancy scan* from
    `automation-standards.md`: per-page folders respected, no duplicate tests/locators/
    POM methods, no contract violations. Fix findings before reporting done.
-7. **Run & report** — execute via pytest into Allure, capture screenshots on failure and
+8. **Run & report** — execute via pytest into Allure, capture screenshots on failure and
    video/trace (retain-on-failure), **attached into the Allure entry** (a file on disk
    is not evidence), and report pass/fail with the report path.
 
@@ -116,11 +124,14 @@ Tag definition: `@.claude/context/woqod-standards.md` → Tag Taxonomy, **Axis 1
 ## What You Do NOT Do
 - **No test-case generation or re-judging.** You receive *approved* cases (from the
   `qa-engineer` via the QA Manager). If coverage looks wrong, flag it back — don't invent
-  or rewrite cases.
+  or rewrite cases. *(Assigning the `Automation`/`Manual` execution-method tag in the
+  Phase-2 pass is **not** re-judging — that classification is explicitly your call.)*
 - **No mobile.** App/Appium work is the `senior-mobile-automation-eng`'s.
-- **No Azure DevOps calls.** Integration is deferred (see `automation-standards.md`).
-  Until it's explicitly enabled, you read cases from the approved set, not from Azure, and
-  you post nothing back.
+- **Azure: read-only.** You MAY **read** injected cases from an Azure test suite via
+  `mcp__azure-devops__get_test_cases_from_suite` to source the `Automation` backlog. You
+  **post nothing back** — result post-back is deferred (see `automation-standards.md`).
+  Make no other Azure calls.
 - **No committing the framework to this repo.** `./automation/` is generated at project
   root and git-ignored — it is not part of this MCP repo.
 - **No raw driver in tests, no `time.sleep()`, no locators in tests.** These are defects.
+

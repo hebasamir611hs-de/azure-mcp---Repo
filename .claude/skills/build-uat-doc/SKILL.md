@@ -20,6 +20,34 @@ If either is missing, ask before starting — the suite reader needs both.)
 > Division of labor: the **MCP reads** the raw suite data; **you filter** by tag;
 > the **`drafter` subagent formats** the client document. No injection happens here.
 
+
+## Language & Direction — Mandatory
+
+The document **language and direction follow the test cases**, not the user's
+prompt. Detect from the filtered set:
+
+- **Arabic test cases** (titles start with `التحقق من أنه` or contain
+  Arabic-script majority) → **full RTL** `.docx`. All headings, labels, table
+  headers, and body text are in Arabic. Document direction = right-to-left.
+  Translation reference for headings:
+  - "Cover Page" → "صفحة الغلاف"
+  - "Purpose & Scope" → "الغرض والنطاق"
+  - "How to Read This Document" → "كيفية قراءة هذا المستند"
+  - "UAT Test Cases" → "حالات اختبار قبول المستخدم"
+  - "Client Sign-off" → "اعتماد العميل"
+  - Table headers: `العنوان | المتطلبات المسبقة | الخطوات | النتيجة المتوقعة | الملاحظات`
+- **English test cases** (titles start with `Verify that`) → **full LTR**
+  `.docx`. Headings and labels in English as in the drafter's standard structure.
+  Table headers: `Title | Preconditions | Steps | Expected Result | Feedback`.
+
+**Never mix:** if the filtered set contains both languages, **stop and ask the
+user** which language to produce (or produce two documents — one per language).
+Never produce a half-Arabic / half-English document.
+
+The drafter subagent is responsible for applying the correct direction —
+pass the detected language as an explicit argument when delegating.
+
+
 ## Procedure
 
 1. **Confirm plan and suite IDs** — parse both from `$ARGUMENTS`. Do not guess.

@@ -1,8 +1,0 @@
-# Dev / test dependencies — NOT required to run the MCP server.
-# Install on top of requirements.txt:
-#   .venv\Scripts\python.exe -m pip install -r requirements-dev.txt
-# Run the suite:
-#   .venv\Scripts\python.exe -m pytest tests/ -q
-
--r requirements.txt
-pytest==8.4.2
