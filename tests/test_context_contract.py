@@ -3,6 +3,9 @@ Context Contract Tests — validates the ACTIVE project context files' structure
 and their consistency with the engine. Content-agnostic: passes for ANY project's
 content, as long as the files keep the contract the agents and skills depend on.
 
+Requires an active project to be set via `python tools/set_project.py <name>`.
+If no active project is set, the entire module is skipped with a clear message.
+
 Closes the gap: engine code has 92 tests, but the knowledge files the agents
 read had zero validation — a broken table or leftover merge marker would
 silently corrupt every analysis.
@@ -16,8 +19,17 @@ import pytest
 from core.utils import _CANONICAL_CATEGORIES
 
 ROOT = Path(__file__).resolve().parent.parent
-STANDARDS = ROOT / ".claude" / "context" / "woqod-standards.md"
-BACKGROUND = ROOT / ".claude" / "context" / "woqod-background.md"
+ACTIVE_DIR = ROOT / ".claude" / "context" / "active"
+STANDARDS = ACTIVE_DIR / "standards.md"
+BACKGROUND = ACTIVE_DIR / "background.md"
+PROJECT_FILE = ACTIVE_DIR / "PROJECT"
+PROJECTS_DIR = ROOT / ".claude" / "context" / "projects"
+
+if not ACTIVE_DIR.exists():
+    pytest.skip(
+        "no active project set — run tools/set_project.py",
+        allow_module_level=True,
+    )
 
 # Engine invariants — these must never change per project.
 CANONICAL_PLATFORMS = {"IOS", "Android", "Web", "Control_Panel"}
@@ -145,6 +157,20 @@ def test_no_merge_conflict_markers(path):
 
 
 def test_files_reference_each_other_consistently(standards_text):
-    assert "woqod-background.md" in standards_text, (
+    assert "background.md" in standards_text, (
         "standards must point at the background file (stable filename contract)"
+    )
+
+
+# ─── Active project marker ──────────────────────────────────────────────────
+
+def test_active_project_marker_valid():
+    assert PROJECT_FILE.exists(), (
+        "active/PROJECT marker is missing — run tools/set_project.py"
+    )
+    project_name = PROJECT_FILE.read_text(encoding="utf-8").strip()
+    project_dir = PROJECTS_DIR / project_name
+    assert project_dir.is_dir(), (
+        f"active/PROJECT says '{project_name}' but "
+        f".claude/context/projects/{project_name}/ does not exist"
     )

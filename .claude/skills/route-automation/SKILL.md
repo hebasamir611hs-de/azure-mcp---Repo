@@ -26,7 +26,7 @@ surface, and delegates the implementation work — never authoring tests itself.
    This is the **only** Azure read in this skill — no writes, ever.
 3. **Classify by Platform tag.** Each case carries one or more Platform tags
    (`Web` / `IOS` / `Android` / `Control_Panel` — taxonomy in
-   `@.claude/context/woqod-standards.md`). Group the set:
+   `@.claude/context/active/standards.md`). Group the set:
    - `web_set`            ← cases tagged `Web`
    - `control_panel_set`  ← cases tagged `Control_Panel` (treated as web internally)
    - `android_set`        ← cases tagged `Android`

@@ -4,9 +4,8 @@
 > end to end: you read the spec, direct the QA Engineer, review their output, sign off,
 > and then — and only then — trigger injection into Azure DevOps.
 >
-> This is the generic orchestrator. All project/business specifics live in the two
-> context files referenced below (`woqod-background.md`, `woqod-standards.md`) — swap
-> those to retarget the engine to a different project.
+> This is the generic orchestrator. All project/business specifics live in
+> `.claude/context/projects/<name>/`; switch with `python tools/set_project.py <name>`.
 
 ---
 
@@ -41,7 +40,7 @@ Core stance:
 ---
 
 ## Project Background
-Read `@.claude/context/woqod-background.md` before any feature analysis.
+Read `@.claude/context/active/background.md` before any feature analysis.
 
 ## Analysis Framework
 Read and apply `@.claude/context/analysis-framework.md`.
@@ -59,7 +58,7 @@ step, the delegation to the `qa-engineer`, and the review gate.**
 
 ## Test Case Format & Standards
 - Test case attributes, Azure mapping, example: `@.claude/context/test-case-template.md`
-- QA rules, IDs, priorities, tags, scope: `@.claude/context/woqod-standards.md`
+- QA rules, IDs, priorities, tags, scope: `@.claude/context/active/standards.md`
 - Automation framework structure, wrapper/locator rules, and the **Bug Reporting on
   Failure** contract (severity mapping, required fields, scope):
   `@.claude/context/automation-standards.md`
@@ -320,7 +319,7 @@ Full mapping is in `@.claude/context/test-case-template.md`. Key points:
 - `scenario`: `positive` | `negative`
 - `impact_area`: `UI` | `Backend` | `Both`
 - `priority`: `1`–`4` (or `0` for MCP auto-assess)
-- `Tags`: the decided keywords — Lifecycle (`UAT`/`Regression`) + **Execution method (`Automation`/`Manual` — exactly one; set by the Automation engineer in the pre-injection pass, not the qa-engineer)** + Service + Platform (`IOS`/`Android`/`Web`/`Control_Panel`) + Category + optional business. Pass via the `tags` key per item in `execute_qa_feedback`, or the `extra_tags` arg in `create_*_test_case`. The MCP adds **only** `Ai_MCP_Injected` (provenance) and injects the rest verbatim — it makes no tag decisions. Lands in Azure `System.Tags` (queryable). Taxonomy in `woqod-standards.md`.
+- `Tags`: the decided keywords — Lifecycle (`UAT`/`Regression`) + **Execution method (`Automation`/`Manual` — exactly one; set by the Automation engineer in the pre-injection pass, not the qa-engineer)** + Service + Platform (`IOS`/`Android`/`Web`/`Control_Panel`) + Category + optional business. Pass via the `tags` key per item in `execute_qa_feedback`, or the `extra_tags` arg in `create_*_test_case`. The MCP adds **only** `Ai_MCP_Injected` (provenance) and injects the rest verbatim — it makes no tag decisions. Lands in Azure `System.Tags` (queryable). Taxonomy in `active/standards.md`.
 
 ---
 

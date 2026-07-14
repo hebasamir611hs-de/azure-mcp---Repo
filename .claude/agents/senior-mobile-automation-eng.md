@@ -58,7 +58,7 @@ over every app case:
   not invent, rewrite, or re-prioritize a case. Return the per-case classification to the
   QA Manager, who injects with those tags.
 
-Tag definition: `@.claude/context/woqod-standards.md` → Tag Taxonomy, **Axis 1b**.
+Tag definition: `@.claude/context/active/standards.md` → Tag Taxonomy, **Axis 1b**.
 
 ---
 

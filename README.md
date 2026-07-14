@@ -288,8 +288,8 @@ re-run subset within it.
 
 | File | Owns |
 |---|---|
-| `.claude/context/woqod-background.md` | Project / business facts: services, surfaces, roles. **May carry a local per-machine override** for a different project (marked with a `⚠️ LOCAL OVERRIDE` banner + `git skip-worktree`) — the filename is stable, the content is per-project |
-| `.claude/context/woqod-standards.md` | QA standards: IDs, priorities, tag taxonomy (including Axis 1b — Automation/Manual), test-case authoring language policy (follows the PBI's language). Same local-override mechanism |
+| `.claude/context/projects/<name>/background.md` | Project / business facts: services, surfaces, roles. One folder per project (woqod, asiacell, smart-khotba). Switch active project with `python tools/set_project.py <name>` |
+| `.claude/context/projects/<name>/standards.md` | QA standards: IDs, priorities, tag taxonomy (including Axis 1b — Automation/Manual), test-case authoring language policy (follows the PBI's language). Per-project |
 | `.claude/context/analysis-framework.md` | The 8 test categories + the 4-step edge methodology + Normal/Deep mode definitions |
 | `.claude/context/test-case-template.md` | Field-level test case format + Azure mapping |
 | `.claude/context/automation-standards.md` | Automation framework contract: structure, locator strategy, wrapper rules, Allure |
@@ -516,7 +516,7 @@ Carried over from PR #4 (Analysis Modes + create-user-manual):
 
 - **Two analysis modes** (Normal default / Deep) across the framework, the agents,
   and the analyze-pbi / quick-test-cases skills.
-- **Automation / Manual tag taxonomy** (Axis 1b in `woqod-standards.md`) — every
+- **Automation / Manual tag taxonomy** (Axis 1b in `active/standards.md`) — every
   case gets exactly one, assigned by the Automation engineer in a pre-injection
   classification pass.
 - `create-user-manual` skill — fixed iHorizons-branded user manual template,

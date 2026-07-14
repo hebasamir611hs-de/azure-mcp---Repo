@@ -1,46 +1,66 @@
-# WOQOD — QA Standards & Conventions
+# Asiacell eCommerce Platform — QA Standards & Conventions
 
-> Process-level rules for the WOQOD QA system. Keep test cases and deliverables
+> Process-level rules for the Asiacell QA system. Keep test cases and deliverables
 > consistent with these. Service and platform details come from
-> `@.claude/context/woqod-background.md`.
+> `@.claude/context/active/background.md`.
 
 ## Service / Module Codes
 Use in test case IDs and grouping:
 
 | Code | Service |
 |---|---|
-| `TAG` | WOQOD Tag (top-up, fueling, payment) |
-| `FAHES` | FAHES inspection & licensing |
-| `BOOK` | Booking system (slots, vehicles, holidays) |
-| `QJET` | Qjet content |
-| `CMS` | CMS (content / settings / configuration / logs) |
+| `HOME` | Homepage (landing page, banners, quick-links, recommendations) |
+| `CATALOG` | Product catalog (category pages, PLP, PDP, vendor widget, 3D images) |
+| `CART` | Shopping cart & quick cart (add/remove, selective checkout, abandoned cart) |
+| `CHECKOUT` | Checkout (personal details, delivery, payment, guest checkout, order placement) |
+| `PAYMENT` | Payment methods (DCB, Asiapay, COD, online card) |
+| `ORDER` | Order management (success page, history, tracking, delivery status, reports) |
+| `AUTH` | Authentication & registration (email, mobile+OTP, social, SSO, forgot password) |
+| `PROFILE` | User profile & my account (edit details, avatar, address book) |
+| `SIM` | SIM purchase, number reservation, SIM swap, eSIM, eKYC |
+| `VOUCH` | Digital vouchers & licenses (Karti Store, multi-vendor vouchers) |
+| `PROMO` | Promotions (flash sale, coupons, countdown banners, price-drop alerts, pre-orders) |
+| `SEARCH` | Search & filtering (product search, category filters, sort) |
+| `PARTNER` | Partner integrations (Air & Travel, Kaspersky, Rehlat, iCenter) |
+| `VENDOR` | Vendor portal (registration, login, product CRUD, orders, notifications) |
+| `CMS` | Admin / CMS (content, settings, reporting, banner scheduling, SEO, B2B groups) |
+| `SEO` | SEO & performance (meta tags, schema, URL structure, Core Web Vitals) |
+| `NOTIFY` | Notifications (SMS, email, push, order alerts, stock alerts) |
 
 ## Platform / Surface Codes
 The Platform tag is **exactly one (or more) of these four values — no others**:
 
 | Code | Surface |
 |---|---|
-| `IOS` | Mobile app — iOS |
-| `Android` | Mobile app — Android |
-| `Web` | Any website (WOQOD / FAHES / Qjet) |
-| `Control_Panel` | CMS / admin backend |
+| `IOS` | Mobile webview — iOS (inside ODP app) |
+| `Android` | Mobile webview — Android (inside ODP app) |
+| `Web` | Web storefront (AsiaMall desktop + responsive mobile browser) |
+| `Control_Panel` | Magento admin backend + vendor portal |
 
 ## Test Case ID Convention
 `<SERVICE>-<FEATURE>-TC-<NNN>` — numbers zero-padded and sequential within a feature.
 
 Examples:
-- `TAG-TOPUP-TC-001`
-- `TAG-FUEL-TC-014`
-- `FAHES-BOOKING-TC-007`
-- `BOOK-SLOT-TC-022`
-- `CMS-CONTENT-TC-003`
+- `CHECKOUT-GUEST-TC-001`
+- `CHECKOUT-PAY-TC-003`
+- `SIM-PURCHASE-TC-007`
+- `SIM-SWAP-TC-012`
+- `CATALOG-PDP-TC-005`
+- `AUTH-LOGIN-TC-001`
+- `VOUCH-KARTI-TC-002`
+- `CMS-BANNER-TC-004`
+- `VENDOR-PRODUCT-TC-008`
 
 ## Priority Rubric
-- **P1 — Critical:** money or core access. Top-up, fueling payment, FAHES payment,
-  login. Blocker if broken.
-- **P2 — High:** major function — booking creation, tag pairing, CMS publish.
-- **P3 — Medium:** secondary function, workaround exists.
-- **P4 — Low:** cosmetic, rare, or minor.
+- **P1 — Critical:** money or core access. Checkout payment (DCB/Asiapay/card/COD),
+  login/registration, SIM purchase payment, order placement, number reservation lock.
+  Blocker if broken.
+- **P2 — High:** major function — SIM swap flow, guest checkout, cart operations,
+  delivery method selection, product catalog browsing, vendor product approval.
+- **P3 — Medium:** secondary function, workaround exists — profile edit, search/filter,
+  flash-sale popup, coupon application, notification delivery, SEO metadata.
+- **P4 — Low:** cosmetic, rare, or minor — avatar upload, countdown timer styling,
+  3D image viewer, tooltip text.
 
 ## Tag Taxonomy
 
@@ -54,7 +74,7 @@ client doc (`Tag = UAT`), etc.
 the standards — the agent applies it when it writes each case. The MCP does **no** tag
 thinking: it injects the tags the agent decided, verbatim, and adds exactly one
 provenance tag of its own (Axis 0). If the agent decides
-`Functional-High; Regression; FAHES; Web`, those four land on Azure unchanged.
+`Functional-High; Regression; CHECKOUT; Web`, those four land on Azure unchanged.
 
 Tags are organized in axes. A typical case carries **one tag from several axes**
 (at minimum a Service, a Platform, a Category, and any applicable Lifecycle tag).
@@ -102,7 +122,7 @@ both, never neither. Together they cover **100%** of the set.
 | Tag | Meaning |
 |---|---|
 | `Automation` | The case **can be automated** and therefore **will be** — it joins the automation backlog. **Bias toward this:** anything technically automatable gets `Automation`, not just the `Regression` subset. |
-| `Manual` | The case **cannot reasonably be automated** — physical/hardware steps (e.g. tag at the fuel gun), purely visual / look-and-feel checks, CAPTCHA, OTP/biometric by a human, device-permission dialogs, exploratory / usability judgement. |
+| `Manual` | The case **cannot reasonably be automated** — physical/hardware steps (e.g. scanning a physical QR code at a kiosk), purely visual / look-and-feel checks, CAPTCHA, OTP/biometric by a human, device-permission dialogs, exploratory / usability judgement. |
 
 > **Who & when — this axis is different from every other tag.** `Automation` / `Manual`
 > is decided by the **Automation engineer** (`senior-web-automation-eng` or
@@ -120,9 +140,11 @@ both, never neither. Together they cover **100%** of the set.
 > case's `execution_type` to match (`Automation` → `Automated`, `Manual` → `Manual`).
 
 ### Axis 2 — Service
-Per the **project's** service codes. For this project: `TAG` · `FAHES` · `BOOK` ·
-`QJET` · `CMS` *(see Service / Module Codes above)*. For a different project, use that
-project's service codes from its standards.
+Per the **project's** service codes. For this project: `HOME` · `CATALOG` · `CART` ·
+`CHECKOUT` · `PAYMENT` · `ORDER` · `AUTH` · `PROFILE` · `SIM` · `VOUCH` · `PROMO` ·
+`SEARCH` · `PARTNER` · `VENDOR` · `CMS` · `SEO` · `NOTIFY`
+*(see Service / Module Codes above)*. For a different project, use that project's
+service codes from its standards.
 
 ### Axis 3 — Platform / Surface
 **Exactly one or more of these four** *(see Platform / Surface Codes above)* — no other
@@ -136,12 +158,13 @@ they most resemble: e.g. a concurrency case → `Edge`, an integration-failure f
 `Functional-High`.)*
 
 ### Axis 5 — Business keyword *(optional, but keep consistent)*
-A single project domain keyword when it helps later filtering, e.g. `Payment`, `Wallet`,
-`QR-Scan`, `Biometric`, `TopUp`, `Booking`, `AuditLog`, `ErrorMessages`.
+A single project domain keyword when it helps later filtering, e.g. `GuestCheckout`,
+`DCB`, `Asiapay`, `SIMSwap`, `eSIM`, `Voucher`, `FlashSale`, `Vendor`, `B2B`,
+`eKYC`, `Delivery`, `Affiliate`, `Review`, `PreOrder`.
 
 ### Do not re-add the provenance tag
 The MCP **automatically** applies `Ai_MCP_Injected` at injection — do **not** include it
-in your `Tags`. Your `Tags` attribute is the full WOQOD-layer decision (Lifecycle +
+in your `Tags`. Your `Tags` attribute is the full project-layer decision (Lifecycle +
 Execution method + Service + Platform + Category + optional Business); the MCP adds
 nothing else and dedupes. There are **no** auto-applied tags beyond `Ai_MCP_Injected` —
 `test_type`, `scenario`, `execution_type`, `impact_area`, and language remain case
@@ -150,13 +173,21 @@ Axis 1b is **not** an auto-emission of the `execution_type` attribute — it is 
 decision the Automation engineer adds; keep the two aligned.)*
 
 ## Money & Payment Rules (special attention)
-WOQOD handles **real payments** — top-up, fueling at the pump, and FAHES payments.
-For any money flow, always:
-- Verify balance / amount math **exactly** (no rounding errors).
-- Cover **failed and interrupted** payments and how the system reconciles.
-- Cover **double-charge / duplicate-submit** prevention.
-- Cover balance state at every transition (before, during, after, on failure).
+Asiacell handles **real payments** — DCB (carrier billing), Asiapay wallet, online card
+payments, and cash on delivery. For any money flow, always:
+- Verify total/subtotal/delivery-fee math **exactly** (no rounding errors, correct
+  currency display in IQD).
+- Cover **failed and interrupted** payments and how the system reconciles (e.g. DCB
+  timeout, Asiapay QR expiry, card decline).
+- Cover **double-charge / duplicate-submit** prevention (especially on QR scan and
+  DCB where network latency may cause retries).
+- Cover balance/order state at every transition (before, during, after, on failure —
+  e.g. number reservation lock must release on payment failure).
 - Treat any money flow as **P1**.
+- For guest checkout: verify payment works without account, and that order is
+  trackable post-purchase.
+- For selective checkout: verify payment total matches only selected items, not
+  full cart.
 
 ## Definition of Done (coverage)
 A feature's analysis is complete only when ALL are addressed **for the active analysis
@@ -178,19 +209,23 @@ mode** (Normal default / Deep — see `analysis-framework.md` → *Analysis Mode
   unclassified, none carrying both.
 
 ## Writing Rules
-- **Titles:** action + condition (e.g. "Top up WOQOD account with expired card").
+- **Titles:** action + condition (e.g. "Complete guest checkout with Asiapay QR payment").
 - **Steps:** numbered, one action each, no ambiguity.
 - **Expected results:** specific and verifiable — never "works correctly".
-- **Test data:** concrete values, not "valid data" (e.g. `Top-up = 50 QAR`).
+- **Test data:** concrete values, not "valid data" (e.g. `Total = 150,000 IQD`,
+  `MSISDN = 07701234567`, `Coupon = FLASH20`).
 
 ## Default Scope
-- **Surfaces:** use the Service ↔ Platform matrix in `woqod-background.md`; default to
+- **Surfaces:** use the Service ↔ Platform matrix in `active/background.md`; default to
   all relevant surfaces for the service unless narrowed.
 - **Languages:** Arabic (RTL) + English unless told otherwise.
+  <!-- TODO: confirm with QA Lead — is Kurdish a supported language? -->
 
 ## Do / Don't
 - ✅ State assumptions when requirements are incomplete.
 - ✅ Ask for acceptance criteria before deep analysis.
-- ✅ Treat physical/hardware steps (tag at the gun) as real test steps with preconditions.
+- ✅ Treat integration-dependent steps (DCB callback, eKYC verification, delivery
+  partner API) as real test steps with preconditions and mock/stub notes.
+- ✅ Verify number reservation lock/unlock timing in SIM flows.
 - ❌ Don't merge multiple verifications into one case.
 - ❌ Don't include internal-only fields in client deliverables.

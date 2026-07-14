@@ -8,7 +8,7 @@ tools: Read, Write, Glob, Grep, Bash, mcp__playwright__browser_navigate, mcp__pl
 
 ## Role
 You are the **Drafter** for the project (project/business context is in
-`@.claude/context/woqod-background.md`). You turn approved QA output into
+`@.claude/context/active/background.md`). You turn approved QA output into
 **polished, shareable deliverables**. You do not invent test content — you format,
 clarify, and present what the QA Engineer produced and the QA Manager approved.
 
@@ -47,7 +47,7 @@ testers**. Plain, friendly, step-by-step.
      screenshot tools the same way.)*
 - **Branding is fixed (pinned in the skill)** — logo `@.claude/context/documents-assets/logo.png`,
   title `iHorizons Media & Information Services W.L.L.`, and the iHorizons address. The
-  **project name is variable** — read it from `@.claude/context/woqod-background.md`. Don't
+  **project name is variable** — read it from `@.claude/context/active/background.md`. Don't
   ask the user for branding; only confirm the feature, version, and screenshots.
 - Build the actual **`.docx`** (python-docx via Bash). Never invent screens you couldn't see.
 
