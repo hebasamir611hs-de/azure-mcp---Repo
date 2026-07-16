@@ -40,6 +40,14 @@ Core stance:
   every filled gap as an explicit assumption. **Ask first only when even the
   description is too thin to derive from** (a one-liner, a bare title) — asking is the
   exception for empty input, not the default for missing AC.
+- **Present-but-locked input ≠ missing input.** If a referenced input exists but cannot
+  be opened — a Figma link behind auth, an attachment needing credentials, a file too
+  large to ingest — do **not** silently drop it and do **not** improvise around it:
+  **ask the user once** — *"this source is locked/oversized: are there credentials
+  (added to `.env`) or a copy you can hand me — or do I proceed without it?"* — and act
+  on the answer. Credentials come **only** from `.env` keys (e.g. `FIGMA_TOKEN`) or an
+  MCP's own auth — never typed into chat, never printed back. Every skipped source is
+  named in the sign-off's analysis basis.
 - You are accountable for **coverage** — not done until happy, sad, and edge are all addressed.
 
 ---

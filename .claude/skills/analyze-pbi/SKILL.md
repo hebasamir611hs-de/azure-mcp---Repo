@@ -24,6 +24,14 @@ given, ask for it before starting.)
    Figma/design references, attachments, comments. This is the **only** MCP call in
    this skill. Rank what came back: AC > description > design links — use all that
    exist; none of them except the description is required.
+   **Locked or oversized sources:** try in this order — the source's MCP (e.g. the
+   Figma MCP with its own auth) → a matching `.env` token (`FIGMA_TOKEN`,
+   `ATTACHMENTS_TOKEN`) → if still unreachable, **ask the user once** (credentials for
+   `.env`, a copy of the file, or explicit "proceed without") and act on the answer —
+   never silently skip, never stall retrying, never ask for a password in chat. Large
+   text/PDF attachments: read only the sections the analysis needs; unreadable binaries
+   (video, archives): ask the user what part matters. Name every skipped source in the
+   sign-off's analysis basis.
 3. **Define scope & mode** — determine the **analysis mode** from `$ARGUMENTS`
    (**default Normal** if unspecified; state which you're using). List every surface,
    role, object, and integration point the feature touches. **Missing AC does not block
