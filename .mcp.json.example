@@ -15,14 +15,14 @@
       "command": "npx",
       "args": [
         "-y",
-        "appium-mcp@latest"
+        "appium-mcp@1.87.6"
       ]
     },
     "playwright": {
       "command": "npx",
       "args": [
         "-y",
-        "@playwright/mcp@latest"
+        "@playwright/mcp@0.0.78"
       ]
     }
   }
