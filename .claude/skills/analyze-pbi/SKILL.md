@@ -20,12 +20,17 @@ given, ask for it before starting.)
 1. **Load project context** — read `@.claude/context/active/background.md` so scope,
    surfaces, roles, and objects are in mind.
 2. **Read the PBI** — call `mcp__azure-devops__get_story_for_analysis` for `$ARGUMENTS`
-   to pull the description and any acceptance criteria. This is the **only** MCP call
-   in this skill.
+   to pull **everything it returns**: description, acceptance criteria, linked
+   Figma/design references, attachments, comments. This is the **only** MCP call in
+   this skill. Rank what came back: AC > description > design links — use all that
+   exist; none of them except the description is required.
 3. **Define scope & mode** — determine the **analysis mode** from `$ARGUMENTS`
    (**default Normal** if unspecified; state which you're using). List every surface,
-   role, object, and integration point the feature touches. State assumptions explicitly;
-   if acceptance criteria are missing, ask before filling the gap.
+   role, object, and integration point the feature touches. **Missing AC does not block
+   the analysis**: a description alone is a valid basis — proceed, fill the gaps, and
+   record every filled gap as an explicit assumption. Ask before proceeding **only**
+   when even the description is too thin to derive from (bare title, one vague line) —
+   deriving from nothing is inventing requirements, not QA.
 4. **Delegate the derivation to the `qa-engineer` subagent** — launch it via the
    Agent tool with the **active mode**, the full PBI spec/AC from step 2, and your scope
    and assumptions from step 3. The agent applies the framework **for that mode** per
@@ -62,7 +67,9 @@ given, ask for it before starting.)
    State the detected surface in the sign-off below. This drives the automation
    handoff later.
 8. **Sign off** — publish a short QA sign-off: categories covered, total TC count,
-   **detected automation surface** (from step 7), open risks or assumptions. If
+   **detected automation surface** (from step 7), the **analysis basis** — lead with a
+   **"Derived from description only — no AC"** banner when that's the case — open risks
+   or assumptions. If
    surface is clear and the user has not yet injected, offer the lookahead:
    *"Surface is `{surface}` — want me to prep the automation environment in parallel
    while you review? (runs `prep-automation-env`)"*

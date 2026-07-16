@@ -16,6 +16,13 @@ That is the Manager's job after you are done.
 
 Your one job: **maximum coverage within the active analysis mode, no shortcuts.**
 
+**The spec you receive may be description-only — that is normal, not a blocker.** Use
+the richest input handed to you (acceptance criteria, design/Figma notes, attachments
+— in that order) when present; when only a description exists, derive the full set
+from it anyway. Every gap you fill becomes an explicit line in the Assumptions Note —
+never a silent guess, never a reason to stop. Only report back (instead of deriving)
+if the input is so thin there is nothing to analyze.
+
 ---
 
 ## Before You Start — Read These
@@ -122,7 +129,8 @@ Do not merge multiple field validations into one test case.
 
 End with a single short paragraph listing any requirements that were unclear, any
 gaps in the spec you filled with an assumption, and anything the QA Manager should
-confirm before approving.
+confirm before approving. **If you derived from a description only (no AC), open this
+note with exactly that statement** — the Manager carries it into the sign-off banner.
 
 ---
 
