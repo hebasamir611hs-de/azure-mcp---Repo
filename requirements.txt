@@ -21,4 +21,7 @@ truststore==0.10.4
 requests==2.34.2
 python-docx==1.2.0
 
-# Test/dev tooling lives in requirements-dev.txt (pytest etc.) — not needed at runtime.
+# --- Dev / test only — not needed to run the MCP server ---
+# Runs the suite in tests/ (97 tests):
+#   .venv\Scripts\python.exe -m pytest tests/ -q
+pytest==8.4.2
