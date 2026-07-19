@@ -272,6 +272,24 @@ the app looked like*:
   - Mobile — Appium screen recording (`start_recording_screen` /
     `stop_recording_screen`) around each test, attached **on failure** (retain-on-failure
     by default to save space; configurable to always-on).
+- **Evidence file naming — fixed pattern, no exceptions.** Every screenshot and
+  video/recording file is named
+  `<type>_<date>_<time>_<testcaseID>_<project>.<ext>` — fields in that exact order:
+  - `type` — `screenshot` | `video`
+  - `date` — `YYYY-MM-DD`
+  - `time` — `HH-MM-SS` (24h)
+  - `testcaseID` — the test's QA traceability ID from its marker/docstring
+    (e.g. `TAG-TOPUP-TC-014`); `NO-TC` if a test lacks one (itself a defect to fix)
+  - `project` — the active project name from config (`PROJECT_NAME` in `.env` /
+    `config/settings.py`)
+
+  Example: `screenshot_2026-07-19_14-32-05_TAG-TOPUP-TC-014_WOQOD.png`. The same
+  string (minus extension) is the Allure attachment name, so the report entry and the
+  file on disk always match. Implemented **once** in `core/utils/reporting.py` as a
+  single naming helper (e.g. `evidence_name(kind, test_case_id)`) used by all three
+  capture points — the `screenshot()` wrapper, the failure-hook capture, and the
+  video attach in fixture teardown (Playwright/Appium auto-generated media files are
+  renamed/copied to this pattern before attaching) — never ad-hoc per test.
 - **Prove it once:** after scaffolding (or any change to the failure hooks), run one
   deliberately failing probe test and open the report — confirm the screenshot and the
   video are attached to the failing entry, then delete the probe.
@@ -299,7 +317,8 @@ the app looked like*:
   git-ignored here) as a template; the real `.env` is never committed anywhere. It must
   enumerate **every** value the framework reads, each with a realistic example: base URL
   per site, environment type (`ENV=dev|staging|uat|prod`), credential placeholders,
-  viewport overrides, Appium server URL + device capabilities.
+  viewport overrides, Appium server URL + device capabilities, and `PROJECT_NAME`
+  (used in the evidence-file naming pattern — see Reporting above).
 - **Scaffolding ends with a configuration summary.** The final reply of
   `scaffold-automation-framework` must list every configuration value the framework
   needs, pre-filled with example values, so the user knows exactly what to fill in
