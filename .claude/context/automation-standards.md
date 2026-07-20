@@ -272,7 +272,7 @@ the app looked like*:
   - Mobile — Appium screen recording (`start_recording_screen` /
     `stop_recording_screen`) around each test, attached **on failure** (retain-on-failure
     by default to save space; configurable to always-on).
-    - **Evidence file naming — fixed pattern, no exceptions.** Every screenshot and
+- **Evidence file naming — fixed pattern, no exceptions.** Every screenshot and
   video/recording file is named
   `<type>_<date>_<time>_<testcaseID>_<project>.<ext>` — fields in that exact order:
   - `type` — `screenshot` | `video`
