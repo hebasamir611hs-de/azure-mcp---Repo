@@ -1,0 +1,540 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AI-Driven QA process — System Flow</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --font-ui: "Inter", "Segoe UI", system-ui, -apple-system, Roboto, Helvetica, Arial, sans-serif;
+    --font-display: "Fraunces", "Iowan Old Style", Georgia, "Times New Roman", serif;
+    --font-mono: ui-monospace, "Cascadia Code", "SF Mono", "JetBrains Mono", Consolas, monospace;
+    --bg:#eef3f9; --surface:#ffffff; --surface-2:#f4f8fd; --ink:#132030; --ink-soft:#5a6b80;
+    --line:#dbe4ef; --brand:#01529B; --brand2:#0a72d0; --accent:#ffab00; --spine:#a9bdd4;
+    --skill-bg:#f1eafb; --skill-ink:#6a3fb3; --skill-edge:#9666d8;
+    --agent-bg:#fff1e2; --agent-ink:#c15600; --agent-edge:#fb8c00;
+    --mcp-bg:#e6f6ec; --mcp-ink:#1c7a45; --mcp-edge:#37a663;
+    --gate-bg:#fff6d8; --gate-ink:#9a6b00; --gate-edge:#e0a400;
+    --user-bg:#f5e9fa; --user-ink:#6a1b9a; --user-edge:#8e24aa;
+    --orch-bg:#e7effb; --orch-ink:#01529B; --orch-edge:#3f86d6;
+    --out-bg:#e3f7f4; --out-ink:#0f7a6c; --out-edge:#14b89f;
+    --shadow:0 1px 2px rgba(19,32,48,.05), 0 10px 30px rgba(19,32,48,.08);
+    --shadow-sm:0 2px 8px rgba(19,32,48,.08);
+  }
+  @media (prefers-color-scheme: dark){ :root{
+    --bg:#0a1119; --surface:#111c28; --surface-2:#16222f; --ink:#e9eff6; --ink-soft:#9db0c4; --line:#233445;
+    --brand:#4a9fe0; --brand2:#66b4ef; --accent:#ffab00; --spine:#37506b;
+    --skill-bg:rgba(150,102,216,.18); --skill-ink:#c3a3ef; --skill-edge:#9666d8;
+    --agent-bg:rgba(251,140,0,.16); --agent-ink:#ffc074; --agent-edge:#fb8c00;
+    --mcp-bg:rgba(55,166,99,.16); --mcp-ink:#8fd6a6; --mcp-edge:#37a663;
+    --gate-bg:rgba(224,164,0,.14); --gate-ink:#ffd766; --gate-edge:#c9970f;
+    --user-bg:rgba(142,36,170,.20); --user-ink:#d19be0; --user-edge:#9e43b8;
+    --orch-bg:rgba(1,82,155,.26); --orch-ink:#7fb6ee; --orch-edge:#4a9fe0;
+    --out-bg:rgba(20,184,159,.16); --out-ink:#5eead4; --out-edge:#14b89f;
+    --shadow:0 1px 2px rgba(0,0,0,.3), 0 12px 34px rgba(0,0,0,.32);
+    --shadow-sm:0 2px 10px rgba(0,0,0,.3);
+  }}
+  :root[data-theme="light"]{ --bg:#eef3f9; --surface:#fff; --surface-2:#f4f8fd; --ink:#132030; --ink-soft:#5a6b80; --line:#dbe4ef; --brand:#01529B; --brand2:#0a72d0; --spine:#a9bdd4;
+    --skill-bg:#f1eafb; --skill-ink:#6a3fb3; --skill-edge:#9666d8; --agent-bg:#fff1e2; --agent-ink:#c15600; --agent-edge:#fb8c00;
+    --mcp-bg:#e6f6ec; --mcp-ink:#1c7a45; --mcp-edge:#37a663; --gate-bg:#fff6d8; --gate-ink:#9a6b00; --gate-edge:#e0a400;
+    --user-bg:#f5e9fa; --user-ink:#6a1b9a; --user-edge:#8e24aa; --orch-bg:#e7effb; --orch-ink:#01529B; --orch-edge:#3f86d6;
+    --out-bg:#e3f7f4; --out-ink:#0f7a6c; --out-edge:#14b89f; }
+  :root[data-theme="dark"]{ --bg:#0a1119; --surface:#111c28; --surface-2:#16222f; --ink:#e9eff6; --ink-soft:#9db0c4; --line:#233445; --brand:#4a9fe0; --brand2:#66b4ef; --spine:#37506b;
+    --skill-bg:rgba(150,102,216,.18); --skill-ink:#c3a3ef; --skill-edge:#9666d8; --agent-bg:rgba(251,140,0,.16); --agent-ink:#ffc074; --agent-edge:#fb8c00;
+    --mcp-bg:rgba(55,166,99,.16); --mcp-ink:#8fd6a6; --mcp-edge:#37a663; --gate-bg:rgba(224,164,0,.14); --gate-ink:#ffd766; --gate-edge:#c9970f;
+    --user-bg:rgba(142,36,170,.20); --user-ink:#d19be0; --user-edge:#9e43b8; --orch-bg:rgba(1,82,155,.26); --orch-ink:#7fb6ee; --orch-edge:#4a9fe0;
+    --out-bg:rgba(20,184,159,.16); --out-ink:#5eead4; --out-edge:#14b89f; }
+
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{margin:0; background:var(--bg); color:var(--ink); font-family:var(--font-ui); line-height:1.5; font-optical-sizing:auto; -webkit-font-smoothing:antialiased; text-rendering:optimizeLegibility;}
+  .wrap{max-width:1220px; margin:0 auto; padding:0 18px 60px;}
+
+  /* brand bar */
+  .brandbar{position:sticky; top:0; z-index:20; background:linear-gradient(90deg,var(--brand),color-mix(in srgb,var(--brand) 78%, #000 8%)); color:#fff; border-bottom:3px solid var(--accent);}
+  .brandbar .row{max-width:1220px; margin:0 auto; padding:11px 20px; display:flex; align-items:center; gap:14px;}
+  .mark{display:flex; align-items:baseline; gap:.5ch; font-weight:800; letter-spacing:-.02em; font-size:1.05rem;}
+  .mark .i{color:var(--accent)}
+  .mark small{font-weight:500; opacity:.85; font-size:.68rem; letter-spacing:.05em; text-transform:uppercase;}
+  .brandbar .sep{flex:1}
+  .toggle{appearance:none; border:1px solid rgba(255,255,255,.35); background:rgba(255,255,255,.12); color:#fff; font:inherit; font-size:.78rem; padding:.34rem .7rem; border-radius:999px; cursor:pointer;}
+  .toggle:hover{background:rgba(255,255,255,.22)}
+
+  /* slide */
+  .slide{position:relative; background:var(--surface); border:1px solid var(--line); border-radius:24px; box-shadow:var(--shadow); padding:clamp(28px,4vw,50px) clamp(26px,4.6vw,60px); margin:26px auto;}
+  body.deck{overflow:hidden;}
+  body.deck .brandbar{display:none;}
+  body.deck .wrap{max-width:none; margin:0; padding:0;}
+  body.deck .slide{position:fixed; inset:0; margin:0; border:0; border-radius:0; width:100vw; height:100vh; min-height:0; display:none; overflow:auto; padding:clamp(38px,6vh,72px) clamp(40px,7vw,120px);}
+  body.deck .slide.active{display:flex; flex-direction:column; justify-content:center; animation:deckin .34s cubic-bezier(.2,.7,.2,1);}
+  @keyframes deckin{from{opacity:0; transform:translateX(26px);} to{opacity:1; transform:none;}}
+  @media (prefers-reduced-motion:reduce){ body.deck .slide.active{animation:none;} }
+
+  h1{font-family:var(--font-display); font-optical-sizing:auto; font-size:clamp(2.2rem,4.8vw,3.4rem); line-height:1.06; margin:.22em 0 .3em; letter-spacing:-.015em; font-weight:600;}
+  h1 .thin{color:var(--ink-soft); font-weight:400; font-style:italic;}
+  h3{font-family:var(--font-display); font-optical-sizing:auto; letter-spacing:-.008em; font-weight:600;}
+  .lede{font-size:clamp(.98rem,1.4vw,1.1rem); line-height:1.6; color:var(--ink-soft); max-width:78ch; margin:0;}
+  .accent-rule{width:64px; height:4px; border-radius:4px; background:linear-gradient(90deg,var(--accent),var(--brand2)); margin:6px 0 16px;}
+
+  /* phase header */
+  .shead{display:flex; align-items:center; gap:16px; margin-bottom:18px; padding-bottom:18px; border-bottom:1px solid var(--line);}
+  .pbadge{flex:none; width:46px; height:46px; border-radius:13px; background:linear-gradient(135deg,var(--brand2),var(--brand)); color:#fff; display:grid; place-items:center; font-family:var(--font-mono); font-weight:700; font-size:1rem; box-shadow:var(--shadow-sm);}
+  .shead h3{margin:0; font-size:1.28rem;}
+  .shead p{margin:2px 0 0; color:var(--ink-soft); font-size:.86rem;}
+  .writes{margin-left:auto; align-self:center; font-family:var(--font-mono); font-size:.7rem; color:var(--ink-soft); background:var(--surface-2); border:1px solid var(--line); padding:.32rem .6rem; border-radius:8px; white-space:nowrap;}
+  .writes b{color:var(--brand)}
+
+  /* content area — centers as a group within the slide, so a light phase never leaves the slide feeling empty */
+  .flowwrap{flex:1; display:flex; flex-direction:column; justify-content:center; align-items:center; gap:18px; margin-top:4px;}
+  .flowwrap > .grouplabel{align-self:flex-start;}
+  .flowwrap > .panel, .flowwrap > .hats, .flowwrap > .blocks{align-self:stretch; width:100%;}
+
+  /* flow layout */
+  .flow{display:flex; align-items:center; gap:16px; flex-wrap:wrap;}
+  .origincol{display:flex; flex-direction:column; gap:11px; flex:none;}
+  .lanes{display:flex; flex-direction:column; gap:14px; flex:1; min-width:0;}
+  .lane{display:flex; align-items:center; flex-wrap:wrap; gap:6px;}
+  .grouplabel{font-size:.66rem; text-transform:uppercase; letter-spacing:.1em; font-weight:800; color:var(--ink-soft); margin:2px 0 -1px 2px;}
+  .orlabel{align-self:center; font-size:.68rem; font-weight:800; letter-spacing:.08em; color:var(--ink-soft); background:var(--surface-2); border:1px solid var(--line); border-radius:999px; padding:.18rem .7rem; margin:-2px 0;}
+
+  /* node — icon lives in a reserved left gutter so the two text lines share ONE left edge */
+  .node{position:relative; display:flex; flex-direction:column; gap:3px; min-width:122px; max-width:195px; padding:13px 16px 13px 40px; border-radius:16px; border:1.5px solid var(--line); background:var(--surface); box-shadow:var(--shadow-sm); transition:transform .12s ease, box-shadow .12s ease;}
+  .node:hover{transform:translateY(-1px);}
+  .node::before{position:absolute; left:14px; top:50%; transform:translateY(-50%); font-size:1rem; line-height:1;}
+  .node .k{font-size:.64rem; text-transform:uppercase; letter-spacing:.07em; font-weight:800;}
+  .node .n{font-family:var(--font-ui); font-size:.86rem; font-weight:700; line-height:1.25; letter-spacing:-.005em; word-break:break-word;}
+  .node .gs{font-size:.74rem; color:var(--ink-soft); line-height:1.45; font-weight:500; margin-top:3px;}
+  .node.sk{border-color:var(--skill-edge); background:var(--skill-bg);} .node.sk .k{color:var(--skill-ink);} .node.sk .n{color:var(--skill-ink);}
+  .node.ag{border-color:var(--agent-edge); background:var(--agent-bg);} .node.ag .k{color:var(--agent-ink);} .node.ag .n{color:var(--agent-ink);}
+  .node.mc{border-color:var(--mcp-edge); background:var(--mcp-bg);} .node.mc .k{color:var(--mcp-ink);} .node.mc .n{color:var(--mcp-ink);}
+  .node.ga{border-color:var(--gate-edge); background:var(--gate-bg);} .node.ga .k{color:var(--gate-ink);} .node.ga .n{color:var(--gate-ink);}
+  .node.us{border-color:var(--user-edge); background:var(--user-bg);} .node.us .k{color:var(--user-ink);} .node.us .n{color:var(--user-ink);}
+  .node.or{border-color:var(--orch-edge); background:var(--orch-bg); min-width:140px;} .node.or .k{color:var(--orch-ink);} .node.or .n{color:var(--orch-ink);}
+  .node.out{border-color:var(--out-edge); background:var(--out-bg);} .node.out .k{color:var(--out-ink);} .node.out .n{color:var(--out-ink);}
+  .node.sm{min-width:110px; max-width:158px; padding:10px 13px 10px 34px;}
+  .node.sm::before{left:12px; font-size:.92rem;}
+  .node.gate-end{max-width:300px;}
+
+  .node.sk::before{content:"📘";}
+  .node.ag::before{content:"🤖";}
+  .node.mc::before{content:"🔌";}
+  .node.ga::before{content:"✋";}
+  .node.us::before{content:"🧑";}
+  .node.or::before{content:"🧭";}
+  .node.out::before{content:"📦";}
+
+  /* arrow connector */
+  .arr{display:inline-flex; flex-direction:column; align-items:center; justify-content:center; min-width:66px; padding:0 2px;}
+  .arr .lbl{font-size:.66rem; font-weight:600; color:var(--ink-soft); white-space:nowrap; margin-bottom:3px; font-style:italic;}
+  .arr .ln{position:relative; width:100%; min-width:34px; height:3px; border-radius:3px; background:linear-gradient(90deg,var(--spine),var(--brand2));}
+  .arr .ln::after{content:""; position:absolute; right:-2px; top:50%; transform:translateY(-50%); border-left:7px solid var(--brand2); border-top:4.5px solid transparent; border-bottom:4.5px solid transparent;}
+
+  /* fork: a source node with a stacked column of branches */
+  .fork{display:flex; align-items:center; gap:2px;}
+  .branches{position:relative; display:flex; flex-direction:column; gap:12px; padding-left:20px;}
+  .branches::before{content:""; position:absolute; left:0; top:9px; bottom:9px; width:3px; border-radius:3px; background:linear-gradient(var(--spine),var(--brand2));}
+  .branch{display:flex; align-items:center; flex-wrap:wrap; gap:4px;}
+
+  /* two-hats demonstration + 4 building blocks (slide 2) */
+  .blocks{display:grid; grid-template-columns:repeat(4,1fr); gap:12px;}
+  @media (max-width:820px){ .blocks{grid-template-columns:repeat(2,1fr);} }
+  .blockcard{display:flex; flex-direction:column; gap:6px; padding:14px 16px; border-radius:14px; border:1.5px solid var(--line); background:var(--surface-2); box-shadow:var(--shadow-sm);}
+  .blockcard .bico{font-size:20px; line-height:1;}
+  .blockcard h5{margin:0; font-size:.86rem; font-weight:800; letter-spacing:-.005em;}
+  .blockcard p{margin:0; font-size:.76rem; color:var(--ink-soft); line-height:1.42;}
+  .blockcard.or{border-color:var(--orch-edge);} .blockcard.or h5{color:var(--orch-ink);}
+  .blockcard.sk{border-color:var(--skill-edge);} .blockcard.sk h5{color:var(--skill-ink);}
+  .blockcard.ag{border-color:var(--agent-edge);} .blockcard.ag h5{color:var(--agent-ink);}
+  .blockcard.mc{border-color:var(--mcp-edge);} .blockcard.mc h5{color:var(--mcp-ink);}
+
+  .hats{display:grid; grid-template-columns:1fr 1fr; gap:16px;}
+  @media (max-width:720px){ .hats{grid-template-columns:1fr;} }
+  .hatcard{padding:20px 22px; border-radius:16px; border:1.5px solid var(--line); background:var(--surface-2); box-shadow:var(--shadow-sm);}
+  .hatcard .badge{display:inline-flex; align-items:center; gap:.5ch; font-weight:800; font-size:.92rem; padding:.38rem .8rem; border-radius:999px; margin-bottom:10px;}
+  .hatcard.qa .badge{color:var(--orch-ink); background:var(--orch-bg); border:1px solid var(--orch-edge);}
+  .hatcard.sdet .badge{color:var(--agent-ink); background:var(--agent-bg); border:1px solid var(--agent-edge);}
+  .hatcard p{margin:0; color:var(--ink-soft); font-size:.9rem; line-height:1.55;}
+
+  /* cover */
+  .meta{display:flex; flex-wrap:wrap; gap:8px; margin-bottom:16px;}
+  .tag{font-family:var(--font-mono); font-size:.72rem; padding:.3rem .6rem; border-radius:8px; background:var(--surface-2); border:1px solid var(--line); color:var(--ink-soft);}
+  .tag b{color:var(--brand)}
+  .legend{display:flex; flex-wrap:wrap; gap:9px; align-items:center;}
+  .lg{font-size:.72rem; text-transform:uppercase; letter-spacing:.09em; color:var(--ink-soft); font-weight:700; margin-right:3px;}
+  .chip{display:inline-flex; align-items:center; gap:.45ch; font-size:.78rem; padding:.3rem .7rem; border-radius:999px; border:1px solid; font-weight:600;}
+  .chip.sk{background:var(--skill-bg); color:var(--skill-ink); border-color:var(--skill-edge);} .chip.sk::before{content:"📘";}
+  .chip.ag{background:var(--agent-bg); color:var(--agent-ink); border-color:var(--agent-edge);} .chip.ag::before{content:"🤖";}
+  .chip.mc{background:var(--mcp-bg); color:var(--mcp-ink); border-color:var(--mcp-edge);} .chip.mc::before{content:"🔌";}
+  .chip.ga{background:var(--gate-bg); color:var(--gate-ink); border-color:var(--gate-edge);} .chip.ga::before{content:"✋";}
+  .chip.us{background:var(--user-bg); color:var(--user-ink); border-color:var(--user-edge);} .chip.us::before{content:"🧑";}
+  .chip.or{background:var(--orch-bg); color:var(--orch-ink); border-color:var(--orch-edge);} .chip.or::before{content:"🧭";}
+  .chip.out{background:var(--out-bg); color:var(--out-ink); border-color:var(--out-edge);} .chip.out::before{content:"📦";}
+
+  .panel{background:var(--surface-2); border:1px solid var(--line); border-radius:18px; padding:18px 20px; box-shadow:var(--shadow-sm);}
+  .panel h4{margin:0 0 10px; font-size:.92rem; display:flex; align-items:center; gap:.5ch;}
+  .panel h4 .dot{width:.6em; height:.6em; border-radius:3px;}
+  .srv{display:flex; gap:8px; align-items:baseline; padding:7px 0; border-top:1px solid var(--line); font-size:.82rem;}
+  .srv:first-of-type{border-top:0;}
+  .srv .nm{font-family:var(--font-mono); font-weight:700; min-width:100px; flex:none;}
+  .srv .ds{color:var(--ink-soft);}
+  .mc-nm{color:var(--mcp-ink);}
+
+  footer{margin-top:26px; padding-top:14px; border-top:1px solid var(--line); color:var(--ink-soft); font-size:.78rem; display:flex; flex-wrap:wrap; gap:6px 16px; align-items:center;}
+  footer .mono{font-family:var(--font-mono);}
+  footer .sep{flex:1;}
+  body.deck footer{display:none;}
+
+  /* ===== deck chrome: progress bar, chevrons, pill ===== */
+  .progress{position:fixed; top:0; left:0; right:0; height:4px; z-index:60; background:transparent;}
+  .progress i{display:block; height:100%; width:0%; background:linear-gradient(90deg,var(--accent),var(--brand2)); transition:width .3s cubic-bezier(.2,.7,.2,1);}
+
+  .chev{position:fixed; top:0; bottom:0; width:9%; min-width:56px; z-index:55; display:flex; align-items:center; border:0; background:transparent; cursor:pointer; color:var(--spine); font-size:1.6rem; transition:color .15s, background .15s;}
+  .chev:hover:not(:disabled){color:var(--brand); background:linear-gradient(90deg,color-mix(in srgb,var(--brand) 6%, transparent),transparent);}
+  .chev:disabled{opacity:0; pointer-events:none;}
+  .chev.prev{left:0; justify-content:flex-start; padding-left:14px;}
+  .chev.next{right:0; justify-content:flex-end; padding-right:14px; background:linear-gradient(270deg,color-mix(in srgb,var(--brand) 6%, transparent),transparent);}
+  .chev span{width:40px; height:40px; border-radius:50%; display:grid; place-items:center; background:var(--surface); border:1px solid var(--line); box-shadow:var(--shadow-sm);}
+
+  .pager{position:fixed; bottom:22px; left:50%; transform:translateX(-50%); z-index:55; display:flex; align-items:center; gap:10px; background:color-mix(in srgb,var(--surface) 88%, transparent); backdrop-filter:blur(10px); border:1px solid var(--line); box-shadow:var(--shadow-sm); border-radius:999px; padding:8px 14px;}
+  .pager .dots{display:flex; gap:6px;}
+  .pager .dot{width:7px; height:7px; border-radius:50%; border:1px solid var(--spine); background:transparent; padding:0; cursor:pointer; transition:all .15s;}
+  .pager .dot.on{width:18px; border-radius:5px; background:var(--brand); border-color:var(--brand);}
+  .pager .count{font-family:var(--font-mono); font-size:.76rem; color:var(--ink-soft); min-width:44px; text-align:center;}
+  .pager .fsbtn{appearance:none; font:inherit; cursor:pointer; color:var(--ink-soft); background:transparent; border:0; font-size:.95rem; padding:2px 4px; line-height:1;}
+  .pager .fsbtn:hover{color:var(--brand);}
+
+  @media print{
+    body.deck{overflow:visible;}
+    .chev,.pager,.progress,.brandbar{display:none !important;}
+    body.deck .slide{position:static; display:flex !important; width:auto; height:100vh; page-break-after:always; break-after:page; animation:none !important; box-shadow:none; border-radius:0;}
+  }
+</style>
+</head>
+<body>
+  <div class="brandbar"><div class="row">
+    <span class="mark"><span class="i">i</span>Horizons <small>QA&nbsp;Engine</small></span>
+    <span class="sep"></span>
+    <button class="toggle" id="themeBtn" type="button" aria-label="Toggle light or dark theme">◐ Theme</button>
+  </div></div>
+
+  <div class="wrap">
+
+    <!-- COVER SLIDE -->
+    <section class="slide cover">
+      <h1>AI-Driven QA process <span class="thin">— System Flow</span></h1>
+      <div class="accent-rule"></div>
+      <p class="lede">One QA Manager carries a sprint end to end — read follows the arrows: the <b>orchestrator invokes a skill</b>, the <b>skill delegates to a sub-agent</b> and/or <b>calls an MCP server</b>, and some steps <b>produce an output</b>. Every phase boundary is an explicit gate.</p>
+      <div class="meta">
+        <span class="tag">orchestrator <b>CLAUDE.md</b></span>
+        <span class="tag"><b>16</b> skills</span>
+        <span class="tag"><b>6</b> sub-agents</span>
+        <span class="tag"><b>3</b> MCP servers</span>
+        <span class="tag">modes <b>Normal · Deep</b></span>
+      </div>
+      <div class="legend">
+        <span class="lg">Read the arrows</span>
+        <span class="chip us">User</span>
+        <span class="chip or">Orchestrator</span>
+        <span class="chip sk">Skill</span>
+        <span class="chip ag">Sub-agent</span>
+        <span class="chip mc">MCP</span>
+        <span class="chip out">Output</span>
+        <span class="chip ga">Gate</span>
+      </div>
+    </section>
+
+    <!-- SLIDE 2 — ENTRY, BUILDING BLOCKS, THE TWO HATS & MCP SERVERS -->
+    <section class="slide">
+      <div class="shead"><div class="pbadge">▶</div><div><h3>Entry &amp; Orchestrator</h3><p>The user hands a sprint/PBI to the orchestrator, who wears two hats.</p></div></div>
+      <div class="flowwrap">
+        <div class="node ga gate-end"><span class="k">gate</span><span class="n">Mode Gate</span><span class="gs">Normal (default) or Deep — named when the PBI is submitted; sets the scope for every skill invoked downstream.</span></div>
+
+        <div class="blocks">
+          <div class="blockcard or"><div class="bico">🧭</div><h5>Orchestrator</h5><p>Reads the request, invokes skills, and switches hats at phase boundaries.</p></div>
+          <div class="blockcard sk"><div class="bico">📘</div><h5>Skill</h5><p>A repeatable procedure — the how-to for one job, run the same way every time.</p></div>
+          <div class="blockcard ag"><div class="bico">🤖</div><h5>Sub-agent</h5><p>A specialist a skill delegates real work to — reasoning or engineering.</p></div>
+          <div class="blockcard mc"><div class="bico">🔌</div><h5>MCP</h5><p>The connector to Azure DevOps, Playwright, and Appium.</p></div>
+        </div>
+
+        <div class="hats">
+          <div class="hatcard qa"><span class="badge">🧭 QA Manager hat</span><p>Owns Phase 1 &amp; 2 — delegates to reasoning sub-agents to analyze the PBI, design test coverage, and prepare documents.</p></div>
+          <div class="hatcard sdet"><span class="badge">🛠️ SDET hat</span><p>Owns Phase 3 — delegates to the engineering sub-agents to build and run the automated tests.</p></div>
+        </div>
+
+        <div class="panel">
+          <h4><span class="dot" style="background:var(--mcp-edge)"></span> MCP Servers <span style="color:var(--ink-soft);font-weight:500;font-size:.72rem;">— <code>.mcp.json</code></span></h4>
+          <div class="srv"><span class="nm mc-nm">azure-devops</span><span class="ds">Read PBIs, inject cases, query coverage/outcomes, read suites, file bugs.</span></div>
+          <div class="srv"><span class="nm mc-nm">playwright</span><span class="ds">Web UI inspection, manual screenshots, web automation.</span></div>
+          <div class="srv"><span class="nm mc-nm">appium</span><span class="ds">Mobile UI inspection + locator extraction for the app.</span></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SLIDE 3 — PHASE 1 -->
+    <section class="slide">
+      <div class="shead"><div class="pbadge">P1</div><div><h3>Analysis &amp; Generation</h3><p>Derive coverage for a PBI, in chat, in the chosen mode.</p></div><span class="writes">writes → <b>chat only</b></span></div>
+      <div class="flowwrap">
+        <div class="flow">
+          <div class="origincol"><div class="node or"><span class="k">orchestrator</span><span class="n">QA Manager</span></div></div>
+          <div class="lanes">
+            <div class="lane">
+              <div class="arr"><span class="lbl">invokes</span><span class="ln"></span></div>
+              <div class="fork">
+                <div class="node sk"><span class="k">skill</span><span class="n">analyze-pbi</span></div>
+                <div class="branches">
+                  <div class="branch"><div class="arr"><span class="lbl">delegates</span><span class="ln"></span></div><div class="node ag"><span class="k">sub-agent</span><span class="n">qa-engineer</span></div><div class="arr"><span class="lbl">produces</span><span class="ln"></span></div><div class="node out sm"><span class="k">output</span><span class="n">Test cases</span></div></div>
+                  <div class="branch"><div class="arr"><span class="lbl">reads PBI</span><span class="ln"></span></div><div class="node mc"><span class="k">mcp</span><span class="n">azure-devops</span></div></div>
+                </div>
+              </div>
+            </div>
+            <div class="orlabel">OR</div>
+            <div class="lane">
+              <div class="arr"><span class="lbl">invokes</span><span class="ln"></span></div>
+              <div class="node sk"><span class="k">skill</span><span class="n">quick-test-cases</span></div>
+              <div class="arr"><span class="lbl">produces</span><span class="ln"></span></div>
+              <div class="node out sm"><span class="k">output</span><span class="n">Quick subset</span></div>
+            </div>
+          </div>
+        </div>
+        <div class="node ga gate-end"><span class="k">gate</span><span class="n">Sign-off Gate — Human Approval Required</span><span class="gs">QA Manager signs off on coverage, then the User must explicitly approve before injection into Azure DevOps.</span></div>
+      </div>
+    </section>
+
+    <!-- SLIDE 4 — PHASE 2 -->
+    <section class="slide">
+      <div class="shead"><div class="pbadge">P2</div><div><h3>Classification, Injection &amp; Deliverables</h3><p>Tag Automation/Manual, push to Azure, produce client &amp; end-user docs.</p></div><span class="writes">writes → <b>Azure</b> · <b>.docx</b></span></div>
+      <div class="flowwrap">
+        <div class="flow">
+          <div class="fork">
+            <div class="node or"><span class="k">orchestrator</span><span class="n">QA Manager</span></div>
+            <div class="branches">
+              <div class="branch">
+                <div class="arr"><span class="lbl">delegates</span><span class="ln"></span></div>
+                <div class="origincol">
+                  <div class="node ag sm"><span class="k">sub-agent</span><span class="n">senior-web-automation-eng</span></div>
+                  <div class="node ag sm"><span class="k">sub-agent</span><span class="n">senior-mobile-automation-eng</span></div>
+                </div>
+                <div class="arr"><span class="lbl">run</span><span class="ln"></span></div>
+                <div class="node sk"><span class="k">skill · pass</span><span class="n">Automation / Manual classification</span></div>
+              </div>
+              <div class="branch">
+                <div class="arr"><span class="lbl">invokes</span><span class="ln"></span></div>
+                <div class="lanes">
+                  <div class="lane">
+                    <div class="fork">
+                      <div class="node sk"><span class="k">skill</span><span class="n">inject-test-cases</span></div>
+                      <div class="branches">
+                        <div class="branch"><div class="arr"><span class="lbl">writes</span><span class="ln"></span></div><div class="node mc sm"><span class="k">mcp</span><span class="n">azure-devops</span></div><div class="arr"><span class="lbl">produces</span><span class="ln"></span></div><div class="node out sm"><span class="k">output</span><span class="n">Azure test plan/suite/cases</span></div></div>
+                        <div class="branch"><div class="arr"><span class="lbl">auto-runs</span><span class="ln"></span></div><div class="node sk sm"><span class="k">skill</span><span class="n">create-bug-queries</span></div><div class="arr"><span class="lbl">writes</span><span class="ln"></span></div><div class="node mc sm"><span class="k">mcp</span><span class="n">azure-devops</span></div><div class="arr"><span class="lbl">produces</span><span class="ln"></span></div><div class="node out sm"><span class="k">output</span><span class="n">Bug queries</span></div></div>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="lane">
+                    <div class="fork">
+                      <div class="node sk"><span class="k">skill</span><span class="n">build-uat-doc</span></div>
+                      <div class="branches">
+                        <div class="branch"><div class="arr"><span class="lbl">reads suite</span><span class="ln"></span></div><div class="node mc sm"><span class="k">mcp</span><span class="n">azure-devops</span></div></div>
+                        <div class="branch"><div class="arr"><span class="lbl">delegates</span><span class="ln"></span></div><div class="node ag sm"><span class="k">sub-agent</span><span class="n">drafter</span></div><div class="arr"><span class="lbl">produces</span><span class="ln"></span></div><div class="node out sm"><span class="k">output</span><span class="n">UAT document</span></div></div>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="lane">
+                    <div class="node sk"><span class="k">skill</span><span class="n">build-chat-uat-doc</span></div>
+                    <div class="arr"><span class="lbl">delegates</span><span class="ln"></span></div><div class="node ag sm"><span class="k">sub-agent</span><span class="n">drafter</span></div>
+                    <div class="arr"><span class="lbl">produces</span><span class="ln"></span></div><div class="node out sm"><span class="k">output</span><span class="n">UAT document</span></div>
+                  </div>
+                  <div class="lane">
+                    <div class="node sk"><span class="k">skill</span><span class="n">create-user-manual</span></div>
+                    <div class="arr"><span class="lbl">delegates</span><span class="ln"></span></div><div class="node ag sm"><span class="k">sub-agent</span><span class="n">drafter</span></div>
+                    <div class="arr"><span class="lbl">screenshots via</span><span class="ln"></span></div><div class="node mc sm"><span class="k">mcp</span><span class="n">playwright</span></div>
+                    <div class="arr"><span class="lbl">produces</span><span class="ln"></span></div><div class="node out sm"><span class="k">output</span><span class="n">User manual</span></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="node ga gate-end"><span class="k">gate</span><span class="n">Hat Switch</span><span class="gs">Automation only begins when the User explicitly asks for it — the orchestrator then switches from the QA Manager hat to the SDET hat.</span></div>
+      </div>
+    </section>
+
+    <!-- SLIDE 5 — PHASE 3 -->
+    <section class="slide">
+      <div class="shead"><div class="pbadge">P3</div><div><h3>Automation Layer <span style="font-family:var(--font-mono);font-size:.62rem;color:var(--gate-ink);background:var(--gate-bg);border:1px solid var(--gate-edge);padding:.1rem .4rem;border-radius:5px;">SDET hat</span></h3><p>Stand up runnable tests — Playwright (web) / Appium (mobile).</p></div><span class="writes">writes → <b>./automation/</b></span></div>
+      <div class="flowwrap">
+        <div class="flow">
+          <div class="origincol"><div class="node ga"><span class="k">gate</span><span class="n">Approval gate</span></div></div>
+          <div class="arr"><span class="lbl">on approval</span><span class="ln"></span></div>
+          <div class="lanes">
+            <div class="grouplabel">Orchestrator-run</div>
+            <div class="lane">
+              <div class="node or sm"><span class="k">orchestrator</span><span class="n">SDET</span></div>
+              <div class="arr"><span class="lbl">invokes</span><span class="ln"></span></div>
+              <div class="fork">
+                <div class="node sk"><span class="k">skill</span><span class="n">route-automation</span></div>
+                <div class="branches">
+                  <div class="branch"><div class="arr"><span class="lbl">reads</span><span class="ln"></span></div><div class="node mc sm"><span class="k">mcp</span><span class="n">azure-devops</span></div></div>
+                  <div class="branch"><div class="arr"><span class="lbl">invokes</span><span class="ln"></span></div><div class="node sk sm"><span class="k">skill</span><span class="n">prep-automation-env</span></div><div class="arr"><span class="lbl">triggers</span><span class="ln"></span></div><div class="node sk sm"><span class="k">skill</span><span class="n">scaffold-automation-framework</span></div></div>
+                </div>
+              </div>
+            </div>
+            <div class="grouplabel">Engineer-run</div>
+            <div class="lane">
+              <div class="origincol"><div class="node or sm"><span class="k">orchestrator</span><span class="n">SDET</span></div></div>
+              <div class="arr"><span class="lbl">delegates</span><span class="ln"></span></div>
+              <div class="node ag sm"><span class="k">sub-agent</span><span class="n">web-eng · mobile-eng</span></div>
+              <div class="arr"><span class="lbl">run</span><span class="ln"></span></div>
+              <div class="fork">
+                <div class="node sk sm"><span class="k">skill</span><span class="n">extract-locators</span></div>
+                <div class="branches">
+                  <div class="branch"><div class="arr"><span class="lbl">web</span><span class="ln"></span></div><div class="node mc sm"><span class="k">mcp</span><span class="n">playwright</span></div></div>
+                  <div class="branch"><div class="arr"><span class="lbl">mobile</span><span class="ln"></span></div><div class="node mc sm"><span class="k">mcp</span><span class="n">appium</span></div></div>
+                </div>
+              </div>
+            </div>
+            <div class="lane">
+              <div class="origincol"><div class="node or sm"><span class="k">orchestrator</span><span class="n">SDET</span></div></div>
+              <div class="arr"><span class="lbl">delegates</span><span class="ln"></span></div>
+              <div class="node ag sm"><span class="k">sub-agent</span><span class="n">web-eng · mobile-eng</span></div>
+              <div class="arr"><span class="lbl">run</span><span class="ln"></span></div>
+              <div class="node sk sm"><span class="k">skill</span><span class="n">automate-test-case</span></div>
+              <div class="arr"><span class="lbl">reads Automation cases</span><span class="ln"></span></div><div class="node mc sm"><span class="k">mcp</span><span class="n">azure-devops</span></div>
+              <div class="arr"><span class="lbl">next</span><span class="ln"></span></div><div class="node sk sm"><span class="k">skill</span><span class="n">run-automation</span></div>
+              <div class="arr"><span class="lbl">produces</span><span class="ln"></span></div><div class="node out sm"><span class="k">output</span><span class="n">Automated tests</span></div>
+            </div>
+          </div>
+        </div>
+        <div class="node ga gate-end"><span class="k">gate</span><span class="n">Failures Detected</span><span class="gs">Automatic — no human gate. A failed run flows straight into bug filing, the one transition in the whole pipeline that needs no approval.</span></div>
+      </div>
+    </section>
+
+    <!-- SLIDE 6 — PHASE 3b -->
+    <section class="slide">
+      <div class="shead"><div class="pbadge">P3b</div><div><h3>Bug Reporting on Failure <span style="font-family:var(--font-mono);font-size:.62rem;color:var(--gate-ink);background:var(--gate-bg);border:1px solid var(--gate-edge);padding:.1rem .4rem;border-radius:5px;">automatic — the only ungated writer</span></h3><p>Tail of any red run: triage → file/update one Bug per failure.</p></div><span class="writes">writes → <b>Azure Bugs</b></span></div>
+      <div class="flowwrap">
+        <div class="flow">
+          <div class="origincol"><div class="node ga sm"><span class="k">trigger</span><span class="n">run-automation failures</span></div></div>
+          <div class="lanes">
+            <div class="lane">
+              <div class="arr"><span class="lbl">triaged by</span><span class="ln"></span></div>
+              <div class="fork">
+                <div class="node ag"><span class="k">sub-agent</span><span class="n">quality-control-engineer</span></div>
+                <div class="branches">
+                  <div class="branch"><div class="arr"><span class="lbl">feeds</span><span class="ln"></span></div><div class="node sk sm"><span class="k">skill</span><span class="n">create-azure-bug</span></div><div class="arr"><span class="lbl">files</span><span class="ln"></span></div><div class="node mc sm"><span class="k">mcp</span><span class="n">azure-devops</span></div></div>
+                  <div class="branch"><div class="arr"><span class="lbl">feeds</span><span class="ln"></span></div><div class="node sk sm"><span class="k">skill</span><span class="n">generate-summary-report</span></div></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="flow" style="margin-top:8px;">
+          <div class="origincol"><div class="node or sm"><span class="k">orchestrator</span><span class="n">SDET</span></div></div>
+          <div class="arr"><span class="lbl">invokes</span><span class="ln"></span></div>
+          <div class="node sk"><span class="k">skill</span><span class="n">triage-failures</span></div>
+          <div class="arr"><span class="lbl">delegates to</span><span class="ln"></span></div>
+          <div class="node ag"><span class="k">sub-agent</span><span class="n">test-failure-triage</span></div>
+          <div class="arr"><span class="lbl">produces</span><span class="ln"></span></div>
+          <div class="node out"><span class="k">output</span><span class="n">Bug decision</span></div>
+          <div class="arr"><span class="lbl">informs</span><span class="ln"></span></div>
+          <div class="node sk sm"><span class="k">skill</span><span class="n">create-azure-bug</span></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SLIDE 7 — CLOSING -->
+    <section class="slide cover">
+      <h1>End to End <span class="thin">— One Pipeline, Six Phases</span></h1>
+      <div class="accent-rule"></div>
+      <p class="lede">From a single PBI to injected test cases, running automation, and logged bugs — one orchestrator, skill by skill, with a human at every gate that matters.</p>
+      <div class="meta">
+        <span class="tag">P1 <b>Analysis &amp; Generation</b></span>
+        <span class="tag">P2 <b>Classification, Injection &amp; Deliverables</b></span>
+        <span class="tag">P3 <b>Automation Layer</b></span>
+        <span class="tag">P3b <b>Bug Reporting on Failure</b></span>
+      </div>
+      <p class="lede">Source of truth: <span style="font-family:var(--font-mono)">README.md</span> · <span style="font-family:var(--font-mono)">CLAUDE.md</span> · <span style="font-family:var(--font-mono)">.claude/</span></p>
+    </section>
+
+    <footer>
+      <span>Source of truth: <span class="mono">README.md</span> · <span class="mono">CLAUDE.md</span> · <span class="mono">.claude/</span></span>
+      <span class="sep"></span>
+      <span>iHorizons QA team — multi-project engine</span>
+    </footer>
+  </div>
+
+  <div class="progress" id="progress" hidden><i id="progressBar"></i></div>
+  <button class="chev prev" id="prevBtn" type="button" aria-label="Previous slide"><span>‹</span></button>
+  <button class="chev next" id="nextBtn" type="button" aria-label="Next slide"><span>›</span></button>
+  <div class="pager" id="pager" hidden>
+    <span class="count" id="count">1 / 7</span>
+    <span class="dots" id="dots"></span>
+    <button class="fsbtn" id="fsBtn" type="button" aria-label="Toggle fullscreen" title="Fullscreen (f)">⛶</button>
+  </div>
+
+<script>
+  (function(){
+    var root=document.documentElement, tb=document.getElementById('themeBtn');
+    tb.addEventListener('click',function(){
+      var cur=root.getAttribute('data-theme');
+      if(!cur){ cur = matchMedia('(prefers-color-scheme: dark)').matches ? 'dark':'light'; }
+      root.setAttribute('data-theme', cur==='dark'?'light':'dark');
+    });
+
+    var slides = Array.prototype.slice.call(document.querySelectorAll('.slide'));
+    if(!slides.length) return;
+    document.body.classList.add('deck');
+
+    var pager=document.getElementById('pager'), prevB=document.getElementById('prevBtn'),
+        nextB=document.getElementById('nextBtn'), count=document.getElementById('count'),
+        dotsC=document.getElementById('dots'), progWrap=document.getElementById('progress'),
+        progBar=document.getElementById('progressBar'), fsBtn=document.getElementById('fsBtn');
+    pager.hidden=false; progWrap.hidden=false;
+
+    slides.forEach(function(_,i){ var d=document.createElement('button'); d.className='dot'; d.type='button';
+      d.setAttribute('aria-label','Go to slide '+(i+1)); d.addEventListener('click',function(){go(i);}); dotsC.appendChild(d); });
+    var dots=Array.prototype.slice.call(dotsC.children), idx=0;
+
+    function go(n){
+      idx=Math.max(0,Math.min(slides.length-1,n));
+      slides.forEach(function(s,i){ s.classList.toggle('active',i===idx); });
+      dots.forEach(function(d,i){ d.classList.toggle('on',i===idx); });
+      count.textContent=(idx+1)+' / '+slides.length;
+      prevB.disabled=idx===0; nextB.disabled=idx===slides.length-1;
+      progBar.style.width=((idx+1)/slides.length*100)+'%';
+      var active=slides[idx]; if(active) active.scrollTop=0;
+    }
+    prevB.addEventListener('click',function(){go(idx-1);});
+    nextB.addEventListener('click',function(){go(idx+1);});
+    document.addEventListener('keydown',function(e){
+      var tag=(e.target && e.target.tagName)||'';
+      if(tag==='INPUT'||tag==='TEXTAREA') return;
+      if(e.key==='ArrowRight'||e.key==='PageDown'||e.key===' '){e.preventDefault();go(idx+1);}
+      else if(e.key==='ArrowLeft'||e.key==='PageUp'){e.preventDefault();go(idx-1);}
+      else if(e.key==='Home'){go(0);} else if(e.key==='End'){go(slides.length-1);}
+      else if(e.key==='f'||e.key==='F'){toggleFullscreen();}
+    });
+
+    // swipe (touch) support
+    var tsx=null;
+    document.addEventListener('touchstart',function(e){ tsx=e.changedTouches[0].clientX; },{passive:true});
+    document.addEventListener('touchend',function(e){
+      if(tsx===null) return;
+      var dx=e.changedTouches[0].clientX - tsx;
+      if(Math.abs(dx)>50){ dx<0 ? go(idx+1) : go(idx-1); }
+      tsx=null;
+    },{passive:true});
+
+    function toggleFullscreen(){
+      if(!document.fullscreenElement){ document.documentElement.requestFullscreen && document.documentElement.requestFullscreen(); }
+      else{ document.exitFullscreen && document.exitFullscreen(); }
+    }
+    fsBtn.addEventListener('click', toggleFullscreen);
+
+    go(0);
+  })();
+</script>
+</body>
+</html>

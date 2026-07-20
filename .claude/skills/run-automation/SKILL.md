@@ -10,8 +10,8 @@ screenshots and video/screen-recording attached on failure. This skill runs and 
 it does not author tests.
 
 **Argument:** the selection → `$ARGUMENTS`
-(`all` | a marker like `smoke` / `sanity` / `regression` / `web` / `mobile` | a single
-test path/ID). Default to `smoke` if nothing is given, and say so.
+(`all` | a marker like `regression` / `web` / `ios` / `android` / `control_panel` |
+a single test path/ID). Default to `regression` if nothing is given, and say so.
 
 > Reporting conventions (Allure, screenshot-on-failure, video/trace retain-on-failure,
 > severity from QA priority) live in `@.claude/context/automation-standards.md`.

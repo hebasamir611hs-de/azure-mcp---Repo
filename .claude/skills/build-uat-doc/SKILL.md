@@ -59,12 +59,18 @@ pass the detected language as an explicit argument when delegating.
    - **If zero cases carry the `UAT` tag, stop and tell the user** — offer to either
      fix the tagging upstream (re-tag in Azure) or, on their explicit say-so, build
      from all suite cases instead. Never silently include untagged cases.
-4. **Delegate to the `drafter` subagent** — hand it the filtered cases (full JSON)
-   plus the feature/PBI name and language (detect Arabic titles → RTL). The drafter
-   produces the client `.docx` per its own definition: cover page, purpose & scope,
-   how-to-read, the case table (*Title · Preconditions · Steps · Expected Result*),
-   and a client sign-off section. Plain business language — no internal fields,
-   priorities, or jargon.
+4. **Detect language and delegate to the `drafter` subagent** — first apply the
+   *Language & Direction* rule above to classify the filtered set. Hand the drafter:
+   - The filtered cases (full JSON).
+   - The feature / PBI name.
+   - **The explicit language argument**: `language=ar` for Arabic (RTL) or
+     `language=en` for English (LTR). The drafter applies the direction throughout
+     the document — headings, body, table headers, page numbering, sign-off — per
+     the translation table above.
+   The drafter produces the client `.docx` per its own definition: cover page,
+   purpose & scope, how-to-read, the case table (*Title · Preconditions · Steps ·
+   Expected Result · Feedback*), and a client sign-off section. Plain business
+   language — no internal fields, priorities, or jargon.
 5. **Review** — call `mcp__azure-devops__review_uat_document` with `uat_file_path` =
    the `.docx` the drafter produced. Read the findings: missing acceptance scenarios,
    vague steps, client-readability issues.

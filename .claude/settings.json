@@ -6,7 +6,24 @@
       "Bash(./venv/Scripts/python.exe -m pip install -r requirements.txt)",
       "Bash(./venv/Scripts/python.exe -m pytest -m web -v)",
       "mcp__playwright__browser_resize",
-      "mcp__playwright__browser_take_screenshot"
+      "mcp__playwright__browser_take_screenshot",
+      "Read(//d/Ai/Automation_E2E_test/**)",
+      "Bash(./.venv/Scripts/python.exe -m pytest web/tests/example/test_example.py -m web -v)",
+      "Bash(./.venv/Scripts/python.exe -c ' *)",
+      "Bash(./.venv/Scripts/python.exe -m pytest web/tests/example/test_probe_failure.py -q)",
+      "Bash(allure generate *)",
+      "Bash(rm -f web/tests/example/test_probe_failure.py)",
+      "Bash(rm -rf reports/allure-report)",
+      "Bash(./.venv/Scripts/python.exe -m pytest -m web -q)",
+      "Read(//d/Ai/Automation_E2E_test/core/utils/**)",
+      "Bash(\"C:/Users/MahmoudSamy/AppData/Local/Programs/Python/Python314/python.exe\" --version)",
+      "mcp__playwright__browser_navigate",
+      "mcp__playwright__browser_snapshot",
+      "mcp__playwright__browser_evaluate",
+      "mcp__playwright__browser_click"
+    ],
+    "additionalDirectories": [
+      "D:\\Ai\\Automation_E2E_test"
     ]
   }
 }
