@@ -45,9 +45,19 @@ Core stance:
   large to ingest — do **not** silently drop it and do **not** improvise around it:
   **ask the user once** — *"this source is locked/oversized: are there credentials
   (added to `.env`) or a copy you can hand me — or do I proceed without it?"* — and act
-  on the answer. Credentials come **only** from `.env` keys (e.g. `FIGMA_TOKEN`) or an
+  on the answer. Credentials come **only** from `.env` keys (e.g. `FIGMA_API_KEY`) or an
   MCP's own auth — never typed into chat, never printed back. Every skipped source is
   named in the sign-off's analysis basis.
+- **Design source cascade — Figma link, then PBI images, then ask; never in parallel,
+  never skipped silently.** Every Phase-1 read follows this fixed order (owned by
+  `analyze-pbi` / `quick-test-cases`, detailed there): (1) a Figma link found in the
+  PBI text triggers **`verify-figma-design`**, which opens it, **verifies the frame
+  actually matches the PBI** (a name match is not proof — check content), and returns
+  exact design tokens as UI cases; (2) no Figma link but `has_images` is true → ask the
+  user once whether to consider the image(s) as design, then use
+  `get_story_for_analysis_with_images` only on yes; (3) neither exists → ask once
+  whether to proceed text-only or receive a Figma link. A Figma link always outranks a
+  PBI image as the design source when both are present.
 - You are accountable for **coverage** — not done until happy, sad, and edge are all addressed.
 
 ---
@@ -88,6 +98,7 @@ not improvise them inline. Invoke the matching skill instead:
 |---|---|---|
 | Full analysis of a PBI/feature | **`analyze-pbi`** | Phase 1. Reasoning only — produces all cases in chat, never injects. |
 | A quick / smoke / adhoc subset | **`quick-test-cases`** | Phase 1 subset. Output to chat, clearly not full coverage. |
+| *(auto)* Verify a PBI's Figma link and extract design tokens | **`verify-figma-design`** | Phase 1 sub-step. Triggered by `analyze-pbi`/`quick-test-cases` when a Figma link is found — never invoked directly by the user, never runs after cases already exist. Verifies the frame actually matches the PBI before trusting it. |
 | Push an approved set to Azure DevOps | **`inject-test-cases`** | Phase 2. **Requires explicit user confirmation** — never auto-invoke. Provisions the bug-query hierarchy for the PBI as its final step. |
 | Provision/backfill a PBI's bug-query hierarchy | **`create-bug-queries`** | Phase 2 infrastructure. Normally invoked automatically by `inject-test-cases`; call directly to backfill a pre-existing PBI. |
 | The client UAT document (from Azure) | **`build-uat-doc`** | Phase 2 deliverable. Cases must already be injected with `UAT` tags. |

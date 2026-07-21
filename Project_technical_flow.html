@@ -148,8 +148,8 @@
       <p>Complete call-level trace of the QA orchestration pipeline: each arrow is one invocation — orchestrator → skill, skill → sub-agent, or a skill/agent → MCP tool call with its exact tool name and effect. Four phases, in execution order.</p>
       <div class="docmeta">
         <span>Orchestrator: <b>CLAUDE.md</b></span>
-        <span>MCP servers: <b>azure-devops · playwright · appium</b></span>
-        <span>Skills: <b>16</b></span>
+        <span>MCP servers: <b>azure-devops · playwright · appium · figma</b></span>
+        <span>Skills: <b>17</b></span>
         <span>Sub-agents: <b>6</b></span>
       </div>
     </div>
@@ -172,7 +172,7 @@
         <tr><td><span class="swatch sw-orch"></span><span class="lbl">ORCHESTRATOR</span></td><td>CLAUDE.md — the router. Wears the QA Manager hat (Phase 1–2) or the SDET hat (Phase 3–3b).</td></tr>
         <tr><td><span class="swatch sw-skill"></span><span class="lbl">SKILL</span></td><td>A file under <code>.claude/skills/</code> — a fixed, reusable procedure the orchestrator invokes.</td></tr>
         <tr><td><span class="swatch sw-agent"></span><span class="lbl">SUB-AGENT</span></td><td>A Claude agent (Agent tool) a skill delegates real work to — reasoning-only or coding, per its own tool grant.</td></tr>
-        <tr><td><span class="swatch sw-mcp"></span><span class="lbl">MCP CALL</span></td><td>A specific tool invocation on a registered MCP server (<code>azure-devops</code>, <code>playwright</code>, <code>appium</code>) — the exact function name is shown on every call.</td></tr>
+        <tr><td><span class="swatch sw-mcp"></span><span class="lbl">MCP CALL</span></td><td>A specific tool invocation on a registered MCP server (<code>azure-devops</code>, <code>playwright</code>, <code>appium</code>, <code>figma</code>) — the exact function name is shown on every call.</td></tr>
         <tr><td><span class="swatch sw-out"></span><span class="lbl">OUTPUT</span></td><td>An artifact the step produces — a work item, a document, a report, a decision.</td></tr>
         <tr><td><span class="swatch sw-gate"></span><span class="lbl">GATE</span></td><td>A phase-boundary checkpoint — human approval required, or an automatic no-gate transition (stated explicitly either way).</td></tr>
       </tbody>
@@ -185,7 +185,7 @@
       <dl class="phasemeta">
         <dt>Trigger</dt><dd>User submits a PBI ID or a sprint, optionally naming the mode (Normal default / Deep)</dd>
         <dt>Writes to</dt><dd>chat only</dd>
-        <dt>Skills used</dt><dd>analyze-pbi, quick-test-cases</dd>
+        <dt>Skills used</dt><dd>analyze-pbi, quick-test-cases, verify-figma-design</dd>
         <dt>Sub-agents used</dt><dd>qa-engineer</dd>
       </dl>
 
@@ -227,22 +227,106 @@
               <div class="mcpcall" style="display:inline-flex; flex-direction:column;">
                 <span class="kind">mcp call — azure-devops</span>
                 <span class="tool">mcp__azure-devops__get_story_for_analysis(story_id)</span>
-                <span class="effect">returns {title, acceptance criteria} for the single PBI</span>
+                <span class="effect">returns {title, ac, description, has_images, image_count, image_sources} — description + image metadata are additive; image_sources is metadata only, no download, no vision cost</span>
               </div>
             </div>
             <div class="stepdesc">The only Azure read inside <code>analyze-pbi</code> itself. Description-only PBIs (no AC) are a valid basis — the skill derives scope and states every assumption explicitly.</div>
           </div>
         </div>
 
-        <div class="callstep sub">
+        <div class="gaterow" style="margin-left:0;">
+          <div class="gt">DECISION — Design Source Cascade</div>
+          <div class="gs">Fixed priority, never in parallel: a Figma link in the description/AC (step 2b) outranks a PBI image (step 2f), which outranks proceeding with no design source at all (step 2h). Exactly one of the three branches below runs.</div>
+        </div>
+
+        <div class="callstep sub" style="margin-top:20px;">
           <div class="stepno">2b</div>
           <div class="stepbody">
             <div class="stepline">
               <div class="box skill"><span class="kind">skill</span><span class="name">analyze-pbi</span></div>
-              <div class="callverb">delegates to</div>
-              <div class="box agent"><span class="kind">sub-agent</span><span class="name">qa-engineer</span></div>
+              <div class="callverb">scans description+AC for</div>
+              <div class="box out"><span class="kind">pattern match</span><span class="name">figma.com/(file|design)/…</span></div>
             </div>
-            <div class="stepdesc">Agent tool call — passes the PBI spec/AC, scope, assumptions, and active mode. Reasoning-only: no MCP access, no code, no file writes.</div>
+            <div class="stepdesc">No MCP call — a text scan of what step 2a already returned. Found → branch to 2c. Not found → skip to 2f.</div>
+          </div>
+        </div>
+
+        <div class="callstep sub">
+          <div class="stepno">2c</div>
+          <div class="stepbody">
+            <div class="stepline">
+              <div class="box skill"><span class="kind">skill</span><span class="name">analyze-pbi</span></div>
+              <div class="callverb">invokes (Figma link found)</div>
+              <div class="box skill"><span class="kind">skill</span><span class="name">verify-figma-design</span></div>
+            </div>
+            <div class="stepdesc">Passes the Figma URL + the PBI title/description. Waits for it to finish before deriving anything — its output feeds step 3 below, merged with whatever else the PBI gives.</div>
+          </div>
+        </div>
+
+        <div class="callstep sub">
+          <div class="stepno">2d</div>
+          <div class="stepbody">
+            <div class="stepline">
+              <div class="box skill"><span class="kind">skill</span><span class="name">verify-figma-design</span></div>
+              <div class="callverb">calls</div>
+              <div class="mcpcall" style="display:inline-flex; flex-direction:column;">
+                <span class="kind">mcp call — figma</span>
+                <span class="tool">mcp__figma__get_figma_data(fileKey, nodeId)</span>
+                <span class="effect">simplified layout/typography/color/spacing data for one node — always node-scoped, never a whole-file fetch when a node-id is available</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="callstep sub">
+          <div class="stepno">2e</div>
+          <div class="stepbody">
+            <div class="stepline">
+              <div class="box skill"><span class="kind">skill</span><span class="name">verify-figma-design</span></div>
+              <div class="callverb">verifies</div>
+              <div class="box out"><span class="kind">output</span><span class="name">Relevance verdict (matches PBI?)</span></div>
+            </div>
+            <div class="stepdesc">Mandatory, every time — a frame named after the PBI is not proof it <em>is</em> the PBI's design. Checks the node's actual content against the PBI's expected fields/copy; red flags (Lorem-ipsum body text, placeholder breadcrumbs, generically-numbered components, the same block repeated under variant labels) mean STOP and ask the human to confirm or correct the link. <strong>Live-verified on a real WOQOD file:</strong> a frame named "Contact Us" turned out to be a generic page-header template with no real form fields — this check caught it before any case was written.</div>
+          </div>
+        </div>
+
+        <div class="callstep sub">
+          <div class="stepno">2f</div>
+          <div class="stepbody">
+            <div class="stepline">
+              <div class="box skill"><span class="kind">skill</span><span class="name">verify-figma-design</span></div>
+              <div class="callverb">produces (on verified)</div>
+              <div class="box out"><span class="kind">output</span><span class="name">Design tokens + Figma-verified UI cases</span></div>
+            </div>
+            <div class="stepdesc">Exact copy, typography, color, and spacing per element, written as concrete assertable UI cases — feeds step 3. If the link never verifies, this step is skipped and the flow falls back to 2h's text-only path instead.</div>
+          </div>
+        </div>
+
+        <div class="callstep sub">
+          <div class="stepno">2g</div>
+          <div class="stepbody">
+            <div class="stepline">
+              <div class="box skill"><span class="kind">skill</span><span class="name">analyze-pbi</span></div>
+              <div class="callverb">(no Figma link) if has_images, asks</div>
+              <div class="box out"><span class="kind">human gate</span><span class="name">"Use attached image(s) as design?"</span></div>
+            </div>
+            <div class="stepdesc">Metadata-driven, not automatic — covers both images pasted into Description/AC and images uploaded as attachments. No <code>has_images</code> → skip straight to 2h.</div>
+          </div>
+        </div>
+
+        <div class="callstep sub">
+          <div class="stepno">2h</div>
+          <div class="stepbody">
+            <div class="stepline">
+              <div class="box skill"><span class="kind">skill</span><span class="name">analyze-pbi</span></div>
+              <div class="callverb">calls (only on YES)</div>
+              <div class="mcpcall" style="display:inline-flex; flex-direction:column;">
+                <span class="kind">mcp call — azure-devops</span>
+                <span class="tool">mcp__azure-devops__get_story_for_analysis_with_images(story_id)</span>
+                <span class="effect">downloads and returns each detected image as viewable content — vision cost incurred here, never before this explicit yes</span>
+              </div>
+            </div>
+            <div class="stepdesc">On NO: images are neglected; the flow proceeds on text alone. If neither a Figma link nor images exist at all, <code>analyze-pbi</code> asks once — proceed text-only, or supply a Figma link (loops back to 2c) — before continuing.</div>
           </div>
         </div>
 
@@ -250,11 +334,11 @@
           <div class="stepno">3</div>
           <div class="stepbody">
             <div class="stepline">
+              <div class="box skill"><span class="kind">skill</span><span class="name">analyze-pbi</span></div>
+              <div class="callverb">delegates to</div>
               <div class="box agent"><span class="kind">sub-agent</span><span class="name">qa-engineer</span></div>
-              <div class="callverb">produces</div>
-              <div class="box out"><span class="kind">output</span><span class="name">Test case set (chat)</span></div>
             </div>
-            <div class="stepdesc">Full template-formatted cases for every in-scope category of the active mode (Normal: UI/Functional-High/Functional-Low + optional Compatibility/Auth/light Edge; Deep: all 8 categories + full 4-step edge methodology). Tags include Lifecycle (UAT/Regression) + Service + Platform + Category — never the Automation/Manual execution tag, that is a Phase-2 decision.</div>
+            <div class="stepdesc">Agent tool call — passes the PBI spec/AC, scope, assumptions, active mode, and whichever design source resolved above (Figma-verified UI cases, viewed images, or neither). Reasoning-only: no MCP access, no code, no file writes.</div>
           </div>
         </div>
 
@@ -262,11 +346,11 @@
           <div class="stepno">4</div>
           <div class="stepbody">
             <div class="stepline">
-              <div class="box orch"><span class="kind">orchestrator</span><span class="name">QA Manager hat</span></div>
-              <div class="callverb">reviews</div>
+              <div class="box agent"><span class="kind">sub-agent</span><span class="name">qa-engineer</span></div>
+              <div class="callverb">produces</div>
               <div class="box out"><span class="kind">output</span><span class="name">Test case set (chat)</span></div>
             </div>
-            <div class="stepdesc">Coverage review gate against the CLAUDE.md checklist. Any missing in-scope category, vague expected result, or missing <code>Tags</code> value sends the set back to step 2b for another pass — not a new agent call, a resume of the same one.</div>
+            <div class="stepdesc">Full template-formatted cases for every in-scope category of the active mode (Normal: UI/Functional-High/Functional-Low + optional Compatibility/Auth/light Edge; Deep: all 8 categories + full 4-step edge methodology), merging in any Figma-verified UI cases from step 2f. Tags include Lifecycle (UAT/Regression) + Service + Platform + Category — never the Automation/Manual execution tag, that is a Phase-2 decision.</div>
           </div>
         </div>
 
@@ -275,10 +359,22 @@
           <div class="stepbody">
             <div class="stepline">
               <div class="box orch"><span class="kind">orchestrator</span><span class="name">QA Manager hat</span></div>
+              <div class="callverb">reviews</div>
+              <div class="box out"><span class="kind">output</span><span class="name">Test case set (chat)</span></div>
+            </div>
+            <div class="stepdesc">Coverage review gate against the CLAUDE.md checklist. Any missing in-scope category, vague expected result, or missing <code>Tags</code> value sends the set back to step 3 for another pass — not a new agent call, a resume of the same one.</div>
+          </div>
+        </div>
+
+        <div class="callstep">
+          <div class="stepno">6</div>
+          <div class="stepbody">
+            <div class="stepline">
+              <div class="box orch"><span class="kind">orchestrator</span><span class="name">QA Manager hat</span></div>
               <div class="callverb">produces</div>
               <div class="box out"><span class="kind">output</span><span class="name">QA sign-off (chat)</span></div>
             </div>
-            <div class="stepdesc">Categories covered, total TC count, analysis basis (AC+description / description-only), detected automation surface (from Platform tags), open risks/assumptions.</div>
+            <div class="stepdesc">Categories covered, total TC count, analysis basis (AC+description / description-only, <strong>plus which design source was used</strong> — Figma-verified, images, or text-only), detected automation surface (from Platform tags), open risks/assumptions.</div>
           </div>
         </div>
       </div>

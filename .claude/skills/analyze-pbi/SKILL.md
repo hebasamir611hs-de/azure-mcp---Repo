@@ -25,13 +25,40 @@ given, ask for it before starting.)
    this skill. Rank what came back: AC > description > design links — use all that
    exist; none of them except the description is required.
    **Locked or oversized sources:** try in this order — the source's MCP (e.g. the
-   Figma MCP with its own auth) → a matching `.env` token (`FIGMA_TOKEN`,
+   Figma MCP with its own auth) → a matching `.env` token (`FIGMA_API_KEY`,
    `ATTACHMENTS_TOKEN`) → if still unreachable, **ask the user once** (credentials for
    `.env`, a copy of the file, or explicit "proceed without") and act on the answer —
    never silently skip, never stall retrying, never ask for a password in chat. Large
    text/PDF attachments: read only the sections the analysis needs; unreadable binaries
    (video, archives): ask the user what part matters. Name every skipped source in the
    sign-off's analysis basis.
+   **Design source cascade — Figma first, then images, then ask. Follow this order;
+   do not auto-view either source out of turn:**
+   1. **Scan for a Figma link** in the description + AC text just returned (pattern:
+      `figma.com/(file|design)/...`). If found, **invoke the `verify-figma-design`
+      skill** with that link plus the PBI title/description, and wait for it to
+      finish before deriving anything — it opens the link, verifies the frame
+      actually matches this PBI (never assumes a name match is enough), and returns
+      verified design tokens as detailed UI cases that merge into step 4 below. If
+      it reports the frame doesn't verify, follow its guidance (it will ask the user
+      to confirm, correct the link, or proceed without) rather than falling through
+      to images on your own.
+   2. **No Figma link found** — check `has_images` / `image_count` / `image_sources`
+      on the response (**metadata only**, no vision cost — covers images pasted into
+      the Description/AC and images uploaded as backlog attachments). If
+      `has_images` is true, **STOP and ask the human once:** *"This PBI contains N
+      image(s) — should I consider the attached image(s) as design input?"* Only on
+      **YES**, call `mcp__azure-devops__get_story_for_analysis_with_images` for the
+      same ID to actually view them (vision cost) and use them as design input. On
+      **NO**, neglect the images and proceed on the text alone.
+   3. **Neither a Figma link nor images** — **STOP and ask the human once:** *"No
+      design reference found for this PBI — proceed with text-only test cases, or
+      can you provide a Figma link?"* A supplied link goes back to step 1. Approval
+      to proceed means UI cases describe standard/expected rendering, not exact
+      pixel values — say so explicitly when you write them.
+
+   Record which source was used (or that none was found/approved) in the sign-off's
+   analysis basis, every time.
 3. **Define scope & mode** — determine the **analysis mode** from `$ARGUMENTS`
    (**default Normal** if unspecified; state which you're using). List every surface,
    role, object, and integration point the feature touches. **Missing AC does not block

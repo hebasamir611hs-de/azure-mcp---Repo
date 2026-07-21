@@ -1,0 +1,41 @@
+{
+  "_comment": "Canonical MCP registry template. Copy to .mcp.json (git-ignored) on first clone: cp .mcp.json.example .mcp.json — then set azure-devops.command to your local Python path. Keep paths RELATIVE here; never commit machine-specific absolute paths. Secrets live only in .env (git-ignored), never in this file.",
+  "mcpServers": {
+    "azure-devops": {
+      "command": "python",
+      "args": [
+        "-u",
+        "server.py"
+      ],
+      "env": {
+        "PYTHONUNBUFFERED": "1"
+      }
+    },
+    "appium": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "appium-mcp@latest"
+      ]
+    },
+    "playwright": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@playwright/mcp@latest"
+      ]
+    },
+    "figma": {
+      "_comment": "Reads FIGMA_API_KEY from .env automatically (loaded from the working directory). Do NOT put the key here. FRAMELINK_TELEMETRY=off disables the package's default usage analytics.",
+      "command": "npx",
+      "args": [
+        "-y",
+        "figma-developer-mcp",
+        "--stdio"
+      ],
+      "env": {
+        "FRAMELINK_TELEMETRY": "off"
+      }
+    }
+  }
+}

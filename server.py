@@ -76,6 +76,7 @@ from core.discovery import (
     check_pbi_duplicates,
     get_pbis_from_sprint,
     get_story_for_analysis,
+    get_story_for_analysis_with_images,
 )
 from core.reporting import (
     create_work_item_query,
@@ -124,6 +125,9 @@ mcp = FastMCP("QA-Final-V4")
 
 # ── Legacy (backward compatibility) ──────────────────────────────────────────
 mcp.tool()(get_story_for_analysis)
+# Vision-cost fallback — only after the human confirms images are design input
+# (ask-gate lives in analyze-pbi / quick-test-cases SKILL.md, never auto).
+mcp.tool()(get_story_for_analysis_with_images)
 mcp.tool()(add_full_test_case)
 
 # ── Skill 0: PBI Deduplication ────────────────────────────────────────────────
