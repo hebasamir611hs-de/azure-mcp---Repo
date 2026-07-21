@@ -64,5 +64,6 @@ no approved case is in hand, stop — route to `analyze-pbi` / `quick-test-cases
 
 ## Hard boundary
 Automates approved cases only. **Never** invents, edits, or re-prioritizes a test case;
-if coverage looks wrong, flag it to the QA Manager. No Azure DevOps calls — the backlog
-comes from the approved set until integration is explicitly enabled.
+if coverage looks wrong, flag it to the QA Manager. This skill posts nothing back to Azure
+(post-back is deferred); cases come from the approved chat set, or the engineer reads the
+`Tag = Automation` cases from the injected Azure suite via `get_test_cases_from_suite`.

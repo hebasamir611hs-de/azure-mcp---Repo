@@ -301,6 +301,49 @@ the app looked like*:
 
 ---
 
+## Result integrity — never fake a result
+
+> A result the framework reports must be a result the framework **actually observed**.
+> Any technique that makes a test *look* green without the app truly behaving correctly is
+> a defect worse than a red test — it hides breakage. This section is non-negotiable.
+
+**Never fabricate or launder a pass:**
+- **No unobserved green.** Never report a test/suite as passing unless the run was
+  executed and observed. If it could not run (no device, env down, blocked precondition),
+  say so explicitly — "pending environment", not "passed". Never invent Allure
+  results/history, run counts, screenshots, or a pass rate.
+- **No assertion tampering to force green.** Do not delete, weaken, or comment out an
+  assertion; do not wrap the body in a `try/except` that swallows the failure; do not
+  assert on a trivially-true condition (`assert True`, `assert 1 == 1`), and do not
+  narrow an assertion until it passes. The assertion must still verify the QA case's real
+  expected result.
+- **No silent catch.** A caught exception that isn't re-raised or asserted on is a
+  defect. Failures must surface.
+
+**A test that catches a real product defect must FAIL — represent it honestly:**
+- If a test runs and the **product** is wrong (a real bug), the correct outcome is a
+  **failure (red)**, and the bug is filed (Phase 3b). Do **not** hide a live product
+  defect behind a bare `@pytest.mark.xfail` or `skip` to keep the suite green — that
+  masks the defect from the run summary.
+- **`xfail` is allowed only for a known, already-filed product bug, and only as
+  `@pytest.mark.xfail(reason="<plain English> — Bug #<id>", strict=True)`.** `strict=True`
+  is mandatory: when the product is fixed the test `xpass`es → pytest turns that into a
+  failure, so the marker self-cleans and can't rot. **Bare `xfail` (non-strict) is
+  forbidden** — it silently absorbs both states. The `reason` must name the Bug ID.
+- **`skip` / `xfail` are never a substitute for a failing assertion.** `skip` is only for
+  a test that genuinely **cannot run here** (missing device/OS host, unavailable
+  precondition, feature not deployed to this env) — never for one whose assertion would
+  fail. Every `skip`/`xfail` carries a concrete `reason`; an unexplained one is a defect.
+- **When in doubt, let it fail.** A visible red with a filed bug is always preferred over
+  a quiet xfail. Do not add `xfail`/`skip` on your own judgement to tidy a run — if a
+  result is inconvenient, surface it to the QA Manager, don't bury it.
+
+**Reporting honesty:** the run summary you hand back states the real numbers —
+passed / failed / xfailed / skipped — with the reason for every xfail/skip and the Bug ID
+where one applies. Never round a mixed result up to "green".
+
+---
+
 ## Configuration & secrets
 
 - All environment data (base URLs per site, Appium server URL, device/OS caps, test
@@ -364,7 +407,12 @@ A test is done only when ALL hold:
 - Produces a clean Allure entry: titled, severity-tagged, steps named, screenshot+video
   attached on failure.
 - The post-batch **structure & redundancy scan** is clean.
-- Passes locally on a clean checkout (`pytest -m smoke` green) before it's called done.
+- **Result integrity holds** (see *Result integrity* above): the pass was actually
+  observed, no assertion was weakened/swallowed, and any `xfail`/`skip` is
+  `strict=True` with a `reason` naming its Bug ID — no bare `xfail`, no unobserved
+  "green".
+- Passes locally on a clean checkout (`pytest -m regression` green, or the test's own
+  marker) before it's called done — a real, observed pass.
 
 ---
 

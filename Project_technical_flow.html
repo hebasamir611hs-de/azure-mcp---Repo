@@ -1,0 +1,897 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AI-Driven QA Engine — Technical Flow Reference</title>
+<style>
+  :root{
+    --font-ui: "Segoe UI", system-ui, -apple-system, Roboto, Helvetica, Arial, sans-serif;
+    --font-mono: ui-monospace, "Cascadia Code", "SF Mono", "JetBrains Mono", Consolas, monospace;
+    --bg:#eef3f9; --surface:#ffffff; --surface-2:#f4f8fd; --ink:#132030; --ink-soft:#5a6b80;
+    --line:#dbe4ef; --brand:#01529B; --brand2:#0a72d0; --accent:#ffab00; --spine:#a9bdd4;
+    --skill-bg:#f1eafb; --skill-ink:#6a3fb3; --skill-edge:#9666d8;
+    --agent-bg:#fff1e2; --agent-ink:#c15600; --agent-edge:#fb8c00;
+    --mcp-bg:#e6f6ec; --mcp-ink:#1c7a45; --mcp-edge:#37a663;
+    --gate-bg:#fff6d8; --gate-ink:#9a6b00; --gate-edge:#e0a400;
+    --orch-bg:#e7effb; --orch-ink:#01529B; --orch-edge:#3f86d6;
+    --out-bg:#e3f7f4; --out-ink:#0f7a6c; --out-edge:#14b89f;
+    --shadow-sm:0 1px 3px rgba(19,32,48,.08);
+  }
+  @media (prefers-color-scheme: dark){ :root{
+    --bg:#0a1119; --surface:#111c28; --surface-2:#16222f; --ink:#e9eff6; --ink-soft:#9db0c4; --line:#233445;
+    --brand:#4a9fe0; --brand2:#66b4ef; --accent:#ffab00; --spine:#37506b;
+    --skill-bg:rgba(150,102,216,.16); --skill-ink:#c3a3ef; --skill-edge:#9666d8;
+    --agent-bg:rgba(251,140,0,.14); --agent-ink:#ffc074; --agent-edge:#fb8c00;
+    --mcp-bg:rgba(55,166,99,.14); --mcp-ink:#8fd6a6; --mcp-edge:#37a663;
+    --gate-bg:rgba(224,164,0,.13); --gate-ink:#ffd766; --gate-edge:#c9970f;
+    --orch-bg:rgba(1,82,155,.24); --orch-ink:#7fb6ee; --orch-edge:#4a9fe0;
+    --out-bg:rgba(20,184,159,.14); --out-ink:#5eead4; --out-edge:#14b89f;
+    --shadow-sm:0 1px 3px rgba(0,0,0,.35);
+  }}
+  :root[data-theme="light"]{ --bg:#eef3f9; --surface:#fff; --surface-2:#f4f8fd; --ink:#132030; --ink-soft:#5a6b80; --line:#dbe4ef; --brand:#01529B; --brand2:#0a72d0; --spine:#a9bdd4;
+    --skill-bg:#f1eafb; --skill-ink:#6a3fb3; --skill-edge:#9666d8; --agent-bg:#fff1e2; --agent-ink:#c15600; --agent-edge:#fb8c00;
+    --mcp-bg:#e6f6ec; --mcp-ink:#1c7a45; --mcp-edge:#37a663; --gate-bg:#fff6d8; --gate-ink:#9a6b00; --gate-edge:#e0a400;
+    --orch-bg:#e7effb; --orch-ink:#01529B; --orch-edge:#3f86d6; --out-bg:#e3f7f4; --out-ink:#0f7a6c; --out-edge:#14b89f; }
+  :root[data-theme="dark"]{ --bg:#0a1119; --surface:#111c28; --surface-2:#16222f; --ink:#e9eff6; --ink-soft:#9db0c4; --line:#233445; --brand:#4a9fe0; --brand2:#66b4ef; --spine:#37506b;
+    --skill-bg:rgba(150,102,216,.16); --skill-ink:#c3a3ef; --skill-edge:#9666d8; --agent-bg:rgba(251,140,0,.14); --agent-ink:#ffc074; --agent-edge:#fb8c00;
+    --mcp-bg:rgba(55,166,99,.14); --mcp-ink:#8fd6a6; --mcp-edge:#37a663; --gate-bg:rgba(224,164,0,.13); --gate-ink:#ffd766; --gate-edge:#c9970f;
+    --orch-bg:rgba(1,82,155,.24); --orch-ink:#7fb6ee; --orch-edge:#4a9fe0; --out-bg:rgba(20,184,159,.14); --out-ink:#5eead4; --out-edge:#14b89f; }
+
+  *{box-sizing:border-box}
+  body{margin:0; background:var(--bg); color:var(--ink); font-family:var(--font-ui); font-size:15px; line-height:1.55;}
+  .wrap{max-width:980px; margin:0 auto; padding:0 24px 80px;}
+
+  header.top{position:sticky; top:0; z-index:10; background:var(--surface); border-bottom:1px solid var(--line); padding:14px 24px;}
+  header.top .row{max-width:980px; margin:0 auto; display:flex; align-items:baseline; gap:14px;}
+  header.top h1{font-size:1.05rem; margin:0; font-weight:700; letter-spacing:-.005em;}
+  header.top .ver{font-family:var(--font-mono); font-size:.72rem; color:var(--ink-soft);}
+  header.top .sep{flex:1}
+  .themebtn{appearance:none; border:1px solid var(--line); background:var(--surface-2); color:var(--ink-soft); font:inherit; font-size:.74rem; padding:.3rem .65rem; border-radius:6px; cursor:pointer;}
+  .themebtn:hover{color:var(--brand); border-color:var(--brand-edge, var(--brand));}
+
+  .titleblock{padding:38px 0 22px; border-bottom:1px solid var(--line); margin-bottom:26px;}
+  .titleblock h2{font-size:1.7rem; margin:0 0 8px; letter-spacing:-.01em;}
+  .titleblock p{margin:0; color:var(--ink-soft); max-width:74ch; font-size:.95rem;}
+  .docmeta{display:flex; flex-wrap:wrap; gap:16px; margin-top:16px; font-size:.78rem; color:var(--ink-soft);}
+  .docmeta b{color:var(--ink); font-family:var(--font-mono); font-weight:600;}
+
+  nav.toc{background:var(--surface-2); border:1px solid var(--line); border-radius:10px; padding:14px 18px; margin-bottom:32px; font-size:.85rem;}
+  nav.toc .tt{font-weight:700; font-size:.72rem; text-transform:uppercase; letter-spacing:.08em; color:var(--ink-soft); margin-bottom:8px;}
+  nav.toc ol{margin:0; padding-left:20px; columns:2; column-gap:24px;}
+  nav.toc li{margin:3px 0; break-inside:avoid;}
+  nav.toc a{color:var(--brand); text-decoration:none;}
+  nav.toc a:hover{text-decoration:underline;}
+
+  /* ---- component key ---- */
+  table.key{width:100%; border-collapse:collapse; font-size:.84rem; margin-bottom:36px;}
+  table.key caption{text-align:left; font-weight:700; font-size:.72rem; text-transform:uppercase; letter-spacing:.08em; color:var(--ink-soft); margin-bottom:10px; caption-side:top;}
+  table.key th{text-align:left; font-size:.72rem; text-transform:uppercase; letter-spacing:.06em; color:var(--ink-soft); padding:6px 10px; border-bottom:1px solid var(--line);}
+  table.key td{padding:8px 10px; border-bottom:1px solid var(--line); vertical-align:top;}
+  table.key td:first-child{white-space:nowrap; width:1%;}
+  table.key .swatch{display:inline-block; width:14px; height:14px; border-radius:4px; border:1.5px solid; vertical-align:-2px; margin-right:7px; flex:none;}
+  table.key .lbl{font-weight:700; font-family:var(--font-mono); font-size:.8rem; white-space:nowrap;}
+  .sw-orch{background:var(--orch-bg); border-color:var(--orch-edge)!important; color:var(--orch-ink);}
+  .sw-skill{background:var(--skill-bg); border-color:var(--skill-edge)!important; color:var(--skill-ink);}
+  .sw-agent{background:var(--agent-bg); border-color:var(--agent-edge)!important; color:var(--agent-ink);}
+  .sw-mcp{background:var(--mcp-bg); border-color:var(--mcp-edge)!important; color:var(--mcp-ink);}
+  .sw-out{background:var(--out-bg); border-color:var(--out-edge)!important; color:var(--out-ink);}
+  .sw-gate{background:var(--gate-bg); border-color:var(--gate-edge)!important; color:var(--gate-ink);}
+
+  /* ---- phase section ---- */
+  section.phase{margin-bottom:56px; scroll-margin-top:70px;}
+  .phasehead{display:flex; align-items:baseline; gap:12px; margin-bottom:6px;}
+  .phasehead .pid{font-family:var(--font-mono); font-weight:700; font-size:.85rem; color:#fff; background:var(--brand); padding:.15rem .55rem; border-radius:5px;}
+  .phasehead h3{margin:0; font-size:1.28rem; letter-spacing:-.008em;}
+  .phasesub{color:var(--ink-soft); font-size:.88rem; margin:2px 0 12px;}
+  dl.phasemeta{display:grid; grid-template-columns:max-content 1fr; gap:4px 14px; font-size:.82rem; margin:0 0 22px; padding:12px 16px; background:var(--surface-2); border:1px solid var(--line); border-radius:8px;}
+  dl.phasemeta dt{color:var(--ink-soft); font-weight:600;}
+  dl.phasemeta dd{margin:0; font-family:var(--font-mono); font-size:.8rem;}
+
+  /* ---- call sequence ---- */
+  .callseq{position:relative; padding-left:34px;}
+  .callseq::before{content:""; position:absolute; left:13px; top:6px; bottom:6px; width:2px; background:var(--line);}
+  .callstep{position:relative; margin-bottom:18px;}
+  .callstep .stepno{position:absolute; left:-34px; top:0; width:26px; height:26px; border-radius:50%; background:var(--surface); border:2px solid var(--brand); color:var(--brand); font-family:var(--font-mono); font-weight:700; font-size:.72rem; display:flex; align-items:center; justify-content:center;}
+  .callstep.sub .stepno{border-color:var(--spine); color:var(--ink-soft); background:var(--surface-2);}
+  .callstep.sub{margin-left:26px;}
+  .stepbody{background:var(--surface); border:1px solid var(--line); border-radius:10px; padding:12px 16px; box-shadow:var(--shadow-sm);}
+  .stepline{display:flex; align-items:center; flex-wrap:wrap; gap:10px;}
+  .callverb{font-size:.76rem; font-weight:700; color:var(--ink-soft); font-style:italic; white-space:nowrap; display:flex; align-items:center; gap:5px;}
+  .callverb::after{content:"→"; color:var(--spine); font-style:normal; font-weight:400;}
+  .stepdesc{margin-top:8px; font-size:.82rem; color:var(--ink-soft); line-height:1.5;}
+  .stepdesc code{font-family:var(--font-mono); font-size:.86em; background:var(--surface-2); padding:.05em .35em; border-radius:4px;}
+
+  .box{display:inline-flex; flex-direction:column; gap:2px; padding:6px 11px; border-radius:7px; border:1.5px solid; font-size:.8rem; line-height:1.3;}
+  .box .kind{font-size:.63rem; text-transform:uppercase; letter-spacing:.06em; font-weight:800;}
+  .box .name{font-family:var(--font-mono); font-weight:700; font-size:.85rem;}
+  .box.orch{background:var(--orch-bg); border-color:var(--orch-edge); color:var(--orch-ink);}
+  .box.skill{background:var(--skill-bg); border-color:var(--skill-edge); color:var(--skill-ink);}
+  .box.agent{background:var(--agent-bg); border-color:var(--agent-edge); color:var(--agent-ink);}
+  .box.mcp{background:var(--mcp-bg); border-color:var(--mcp-edge); color:var(--mcp-ink);}
+  .box.out{background:var(--out-bg); border-color:var(--out-edge); color:var(--out-ink);}
+  .box.gate{background:var(--gate-bg); border-color:var(--gate-edge); color:var(--gate-ink);}
+
+  /* mcp call box gets a wider format: server + exact tool name + effect */
+  .mcpcall{background:var(--mcp-bg); border:1.5px solid var(--mcp-edge); border-radius:7px; padding:8px 12px; color:var(--mcp-ink); max-width:100%;}
+  .mcpcall .kind{font-size:.63rem; text-transform:uppercase; letter-spacing:.06em; font-weight:800;}
+  .mcpcall .tool{display:block; font-family:var(--font-mono); font-weight:700; font-size:.85rem; margin:2px 0; word-break:break-word;}
+  .mcpcall .effect{font-size:.78rem; color:var(--ink-soft); font-style:italic;}
+  .mcpcall .unverified{font-size:.68rem; color:var(--ink-soft); font-style:italic; display:block; margin-top:3px;}
+
+  .gaterow{margin:22px 0 0 -34px; padding:14px 18px; border-radius:10px; background:linear-gradient(135deg,var(--gate-bg),color-mix(in srgb,var(--gate-bg) 55%, transparent)); border:1.5px solid var(--gate-edge);}
+  .gaterow .gt{font-family:var(--font-mono); font-weight:700; font-size:.85rem; color:var(--gate-ink);}
+  .gaterow .gs{font-size:.82rem; color:var(--ink-soft); margin-top:3px; line-height:1.5;}
+
+  footer.docfoot{margin-top:50px; padding-top:16px; border-top:1px solid var(--line); font-size:.78rem; color:var(--ink-soft); display:flex; flex-wrap:wrap; gap:6px 16px;}
+  footer.docfoot code{font-family:var(--font-mono);}
+
+  @media print{
+    header.top{position:static;}
+    .themebtn{display:none;}
+    section.phase{break-inside:avoid-page;}
+  }
+</style>
+</head>
+<body>
+  <header class="top"><div class="row">
+    <h1>AI-Driven QA Engine</h1>
+    <span class="ver">Technical Flow Reference · v1.0</span>
+    <span class="sep"></span>
+    <button class="themebtn" id="themeBtn" type="button">Toggle theme</button>
+  </div></header>
+
+  <div class="wrap">
+
+    <div class="titleblock">
+      <h2>System Flow — Every Call, Explicit</h2>
+      <p>Complete call-level trace of the QA orchestration pipeline: each arrow is one invocation — orchestrator → skill, skill → sub-agent, or a skill/agent → MCP tool call with its exact tool name and effect. Four phases, in execution order.</p>
+      <div class="docmeta">
+        <span>Orchestrator: <b>CLAUDE.md</b></span>
+        <span>MCP servers: <b>azure-devops · playwright · appium · figma</b></span>
+        <span>Skills: <b>17</b></span>
+        <span>Sub-agents: <b>6</b></span>
+      </div>
+    </div>
+
+    <nav class="toc">
+      <div class="tt">Contents</div>
+      <ol>
+        <li><a href="#key">Component key</a></li>
+        <li><a href="#p1">Phase 1 — Analysis &amp; Generation</a></li>
+        <li><a href="#p2">Phase 2 — Classification, Injection &amp; Deliverables</a></li>
+        <li><a href="#p3">Phase 3 — Automation Layer</a></li>
+        <li><a href="#p3b">Phase 3b — Bug Reporting on Failure</a></li>
+      </ol>
+    </nav>
+
+    <table class="key" id="key">
+      <caption>Component key</caption>
+      <thead><tr><th>Type</th><th>Meaning</th></tr></thead>
+      <tbody>
+        <tr><td><span class="swatch sw-orch"></span><span class="lbl">ORCHESTRATOR</span></td><td>CLAUDE.md — the router. Wears the QA Manager hat (Phase 1–2) or the SDET hat (Phase 3–3b).</td></tr>
+        <tr><td><span class="swatch sw-skill"></span><span class="lbl">SKILL</span></td><td>A file under <code>.claude/skills/</code> — a fixed, reusable procedure the orchestrator invokes.</td></tr>
+        <tr><td><span class="swatch sw-agent"></span><span class="lbl">SUB-AGENT</span></td><td>A Claude agent (Agent tool) a skill delegates real work to — reasoning-only or coding, per its own tool grant.</td></tr>
+        <tr><td><span class="swatch sw-mcp"></span><span class="lbl">MCP CALL</span></td><td>A specific tool invocation on a registered MCP server (<code>azure-devops</code>, <code>playwright</code>, <code>appium</code>, <code>figma</code>) — the exact function name is shown on every call.</td></tr>
+        <tr><td><span class="swatch sw-out"></span><span class="lbl">OUTPUT</span></td><td>An artifact the step produces — a work item, a document, a report, a decision.</td></tr>
+        <tr><td><span class="swatch sw-gate"></span><span class="lbl">GATE</span></td><td>A phase-boundary checkpoint — human approval required, or an automatic no-gate transition (stated explicitly either way).</td></tr>
+      </tbody>
+    </table>
+
+    <!-- ============ PHASE 1 ============ -->
+    <section class="phase" id="p1">
+      <div class="phasehead"><span class="pid">P1</span><h3>Analysis &amp; Generation</h3></div>
+      <p class="phasesub">Derive full test coverage for a PBI, in chat, in the chosen analysis mode. Nothing is written to Azure in this phase.</p>
+      <dl class="phasemeta">
+        <dt>Trigger</dt><dd>User submits a PBI ID or a sprint, optionally naming the mode (Normal default / Deep)</dd>
+        <dt>Writes to</dt><dd>chat only</dd>
+        <dt>Skills used</dt><dd>analyze-pbi, quick-test-cases, verify-figma-design</dd>
+        <dt>Sub-agents used</dt><dd>qa-engineer</dd>
+      </dl>
+
+      <div class="callseq">
+        <div class="callstep">
+          <div class="stepno">1</div>
+          <div class="stepbody">
+            <div class="stepline">
+              <div class="box orch"><span class="kind">orchestrator</span><span class="name">QA Manager hat</span></div>
+              <div class="callverb">invokes (sprint mode)</div>
+              <div class="mcpcall" style="display:inline-flex; flex-direction:column;">
+                <span class="kind">mcp call — azure-devops</span>
+                <span class="tool">mcp__azure-devops__get_pbis_from_sprint(iteration_path)</span>
+                <span class="effect">reads every PBI in the sprint; validates readiness; auto-detects language (ar/en)</span>
+              </div>
+            </div>
+            <div class="stepdesc">Optional entry point when given a sprint rather than a single PBI ID. A PBI is skipped only if its Description is empty — a missing Acceptance Criteria does not skip it.</div>
+          </div>
+        </div>
+
+        <div class="callstep">
+          <div class="stepno">2</div>
+          <div class="stepbody">
+            <div class="stepline">
+              <div class="box orch"><span class="kind">orchestrator</span><span class="name">QA Manager hat</span></div>
+              <div class="callverb">invokes</div>
+              <div class="box skill"><span class="kind">skill</span><span class="name">analyze-pbi</span></div>
+            </div>
+            <div class="stepdesc">Full Phase-1 procedure for one PBI, in the active mode. Alternative: <code>quick-test-cases</code> for a tight prioritized subset (happy path + top negatives + sharpest edges) — same call shape, no injection either way.</div>
+          </div>
+        </div>
+
+        <div class="callstep sub">
+          <div class="stepno">2a</div>
+          <div class="stepbody">
+            <div class="stepline">
+              <div class="box skill"><span class="kind">skill</span><span class="name">analyze-pbi</span></div>
+              <div class="callverb">calls</div>
+              <div class="mcpcall" style="display:inline-flex; flex-direction:column;">
+                <span class="kind">mcp call — azure-devops</span>
+                <span class="tool">mcp__azure-devops__get_story_for_analysis(story_id)</span>
+                <span class="effect">returns {title, ac, description, has_images, image_count, image_sources} — description + image metadata are additive; image_sources is metadata only, no download, no vision cost</span>
+              </div>
+            </div>
+            <div class="stepdesc">The only Azure read inside <code>analyze-pbi</code> itself. Description-only PBIs (no AC) are a valid basis — the skill derives scope and states every assumption explicitly.</div>
+          </div>
+        </div>
+
+        <div class="gaterow" style="margin-left:0;">
+          <div class="gt">DECISION — Design Source Cascade</div>
+          <div class="gs">Fixed priority, never in parallel: a Figma link in the description/AC (step 2b) outranks a PBI image (step 2f), which outranks proceeding with no design source at all (step 2h). Exactly one of the three branches below runs.</div>
+        </div>
+
+        <div class="callstep sub" style="margin-top:20px;">
+          <div class="stepno">2b</div>
+          <div class="stepbody">
+            <div class="stepline">
+              <div class="box skill"><span class="kind">skill</span><span class="name">analyze-pbi</span></div>
+              <div class="callverb">scans description+AC for</div>
+              <div class="box out"><span class="kind">pattern match</span><span class="name">figma.com/(file|design)/…</span></div>
+            </div>
+            <div class="stepdesc">No MCP call — a text scan of what step 2a already returned. Found → branch to 2c. Not found → skip to 2f.</div>
+          </div>
+        </div>
+
+        <div class="callstep sub">
+          <div class="stepno">2c</div>
+          <div class="stepbody">
+            <div class="stepline">
+              <div class="box skill"><span class="kind">skill</span><span class="name">analyze-pbi</span></div>
+              <div class="callverb">invokes (Figma link found)</div>
+              <div class="box skill"><span class="kind">skill</span><span class="name">verify-figma-design</span></div>
+            </div>
+            <div class="stepdesc">Passes the Figma URL + the PBI title/description. Waits for it to finish before deriving anything — its output feeds step 3 below, merged with whatever else the PBI gives.</div>
+          </div>
+        </div>
+
+        <div class="callstep sub">
+          <div class="stepno">2d</div>
+          <div class="stepbody">
+            <div class="stepline">
+              <div class="box skill"><span class="kind">skill</span><span class="name">verify-figma-design</span></div>
+              <div class="callverb">calls</div>
+              <div class="mcpcall" style="display:inline-flex; flex-direction:column;">
+                <span class="kind">mcp call — figma</span>
+                <span class="tool">mcp__figma__get_figma_data(fileKey, nodeId)</span>
+                <span class="effect">simplified layout/typography/color/spacing data for one node — always node-scoped, never a whole-file fetch when a node-id is available</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="callstep sub">
+          <div class="stepno">2e</div>
+          <div class="stepbody">
+            <div class="stepline">
+              <div class="box skill"><span class="kind">skill</span><span class="name">verify-figma-design</span></div>
+              <div class="callverb">verifies</div>
+              <div class="box out"><span class="kind">output</span><span class="name">Relevance verdict (matches PBI?)</span></div>
+            </div>
+            <div class="stepdesc">Mandatory, every time — a frame named after the PBI is not proof it <em>is</em> the PBI's design. Checks the node's actual content against the PBI's expected fields/copy; red flags (Lorem-ipsum body text, placeholder breadcrumbs, generically-numbered components, the same block repeated under variant labels) mean STOP and ask the human to confirm or correct the link. <strong>Live-verified on a real WOQOD file:</strong> a frame named "Contact Us" turned out to be a generic page-header template with no real form fields — this check caught it before any case was written.</div>
+          </div>
+        </div>
+
+        <div class="callstep sub">
+          <div class="stepno">2f</div>
+          <div class="stepbody">
+            <div class="stepline">
+              <div class="box skill"><span class="kind">skill</span><span class="name">verify-figma-design</span></div>
+              <div class="callverb">produces (on verified)</div>
+              <div class="box out"><span class="kind">output</span><span class="name">Design tokens + Figma-verified UI cases</span></div>
+            </div>
+            <div class="stepdesc">Exact copy, typography, color, and spacing per element, written as concrete assertable UI cases — feeds step 3. If the link never verifies, this step is skipped and the flow falls back to 2h's text-only path instead.</div>
+          </div>
+        </div>
+
+        <div class="callstep sub">
+          <div class="stepno">2g</div>
+          <div class="stepbody">
+            <div class="stepline">
+              <div class="box skill"><span class="kind">skill</span><span class="name">analyze-pbi</span></div>
+              <div class="callverb">(no Figma link) if has_images, asks</div>
+              <div class="box out"><span class="kind">human gate</span><span class="name">"Use attached image(s) as design?"</span></div>
+            </div>
+            <div class="stepdesc">Metadata-driven, not automatic — covers both images pasted into Description/AC and images uploaded as attachments. No <code>has_images</code> → skip straight to 2h.</div>
+          </div>
+        </div>
+
+        <div class="callstep sub">
+          <div class="stepno">2h</div>
+          <div class="stepbody">
+            <div class="stepline">
+              <div class="box skill"><span class="kind">skill</span><span class="name">analyze-pbi</span></div>
+              <div class="callverb">calls (only on YES)</div>
+              <div class="mcpcall" style="display:inline-flex; flex-direction:column;">
+                <span class="kind">mcp call — azure-devops</span>
+                <span class="tool">mcp__azure-devops__get_story_for_analysis_with_images(story_id)</span>
+                <span class="effect">downloads and returns each detected image as viewable content — vision cost incurred here, never before this explicit yes</span>
+              </div>
+            </div>
+            <div class="stepdesc">On NO: images are neglected; the flow proceeds on text alone. If neither a Figma link nor images exist at all, <code>analyze-pbi</code> asks once — proceed text-only, or supply a Figma link (loops back to 2c) — before continuing.</div>
+          </div>
+        </div>
+
+        <div class="callstep">
+          <div class="stepno">3</div>
+          <div class="stepbody">
+            <div class="stepline">
+              <div class="box skill"><span class="kind">skill</span><span class="name">analyze-pbi</span></div>
+              <div class="callverb">delegates to</div>
+              <div class="box agent"><span class="kind">sub-agent</span><span class="name">qa-engineer</span></div>
+            </div>
+            <div class="stepdesc">Agent tool call — passes the PBI spec/AC, scope, assumptions, active mode, and whichever design source resolved above (Figma-verified UI cases, viewed images, or neither). Reasoning-only: no MCP access, no code, no file writes.</div>
+          </div>
+        </div>
+
+        <div class="callstep">
+          <div class="stepno">4</div>
+          <div class="stepbody">
+            <div class="stepline">
+              <div class="box agent"><span class="kind">sub-agent</span><span class="name">qa-engineer</span></div>
+              <div class="callverb">produces</div>
+              <div class="box out"><span class="kind">output</span><span class="name">Test case set (chat)</span></div>
+            </div>
+            <div class="stepdesc">Full template-formatted cases for every in-scope category of the active mode (Normal: UI/Functional-High/Functional-Low + optional Compatibility/Auth/light Edge; Deep: all 8 categories + full 4-step edge methodology), merging in any Figma-verified UI cases from step 2f. Tags include Lifecycle (UAT/Regression) + Service + Platform + Category — never the Automation/Manual execution tag, that is a Phase-2 decision.</div>
+          </div>
+        </div>
+
+        <div class="callstep">
+          <div class="stepno">5</div>
+          <div class="stepbody">
+            <div class="stepline">
+              <div class="box orch"><span class="kind">orchestrator</span><span class="name">QA Manager hat</span></div>
+              <div class="callverb">reviews</div>
+              <div class="box out"><span class="kind">output</span><span class="name">Test case set (chat)</span></div>
+            </div>
+            <div class="stepdesc">Coverage review gate against the CLAUDE.md checklist. Any missing in-scope category, vague expected result, or missing <code>Tags</code> value sends the set back to step 3 for another pass — not a new agent call, a resume of the same one.</div>
+          </div>
+        </div>
+
+        <div class="callstep">
+          <div class="stepno">6</div>
+          <div class="stepbody">
+            <div class="stepline">
+              <div class="box orch"><span class="kind">orchestrator</span><span class="name">QA Manager hat</span></div>
+              <div class="callverb">produces</div>
+              <div class="box out"><span class="kind">output</span><span class="name">QA sign-off (chat)</span></div>
+            </div>
+            <div class="stepdesc">Categories covered, total TC count, analysis basis (AC+description / description-only, <strong>plus which design source was used</strong> — Figma-verified, images, or text-only), detected automation surface (from Platform tags), open risks/assumptions.</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="gaterow">
+        <div class="gt">GATE — Sign-off Gate (human approval required)</div>
+        <div class="gs">The QA Manager's sign-off is not itself approval. The User must explicitly approve the set before Phase 2's <code>inject-test-cases</code> can run — no injection tool is ever called inside Phase 1.</div>
+      </div>
+    </section>
+
+    <!-- ============ PHASE 2 ============ -->
+    <section class="phase" id="p2">
+      <div class="phasehead"><span class="pid">P2</span><h3>Classification, Injection &amp; Deliverables</h3></div>
+      <p class="phasesub">Classify every case Automation/Manual, push the approved set to Azure DevOps, then produce the client and end-user documents.</p>
+      <dl class="phasemeta">
+        <dt>Trigger</dt><dd>User explicitly approves the Phase-1 set</dd>
+        <dt>Writes to</dt><dd>Azure DevOps work items, .docx documents</dd>
+        <dt>Skills used</dt><dd>inject-test-cases, create-bug-queries, build-uat-doc, build-chat-uat-doc, create-user-manual</dd>
+        <dt>Sub-agents used</dt><dd>senior-web-automation-eng, senior-mobile-automation-eng, drafter</dd>
+      </dl>
+
+      <div class="callseq">
+        <div class="callstep">
+          <div class="stepno">1</div>
+          <div class="stepbody">
+            <div class="stepline">
+              <div class="box orch"><span class="kind">orchestrator</span><span class="name">QA Manager hat</span></div>
+              <div class="callverb">delegates to</div>
+              <div class="box agent"><span class="kind">sub-agent</span><span class="name">senior-web-automation-eng</span></div>
+              <span style="color:var(--ink-soft); font-size:.8rem;">and/or</span>
+              <div class="box agent"><span class="kind">sub-agent</span><span class="name">senior-mobile-automation-eng</span></div>
+            </div>
+            <div class="stepdesc">Pre-injection classification pass, by surface. Agent tool call, judgement-only — no MCP access, no framework code written here.</div>
+          </div>
+        </div>
+
+        <div class="callstep">
+          <div class="stepno">2</div>
+          <div class="stepbody">
+            <div class="stepline">
+              <div class="box agent"><span class="kind">sub-agent</span><span class="name">automation engineer(s)</span></div>
+              <div class="callverb">produces</div>
+              <div class="box out"><span class="kind">output</span><span class="name">Automation/Manual tags (100%)</span></div>
+            </div>
+            <div class="stepdesc">Every case gets exactly one execution-method tag — bias toward Automation. <code>execution_type</code> is aligned to match. This is the only place this tag axis is ever decided.</div>
+          </div>
+        </div>
+
+        <div class="callstep">
+          <div class="stepno">3</div>
+          <div class="stepbody">
+            <div class="stepline">
+              <div class="box orch"><span class="kind">orchestrator</span><span class="name">QA Manager hat</span></div>
+              <div class="callverb">invokes</div>
+              <div class="box skill"><span class="kind">skill</span><span class="name">inject-test-cases</span></div>
+            </div>
+            <div class="stepdesc">Confirms the parent PBI ID first. Dumb transport — zero analysis, zero re-judging of the approved+classified set.</div>
+          </div>
+        </div>
+
+        <div class="callstep sub">
+          <div class="stepno">3a</div>
+          <div class="stepbody">
+            <div class="stepline">
+              <div class="box skill"><span class="kind">skill</span><span class="name">inject-test-cases</span></div>
+              <div class="callverb">calls</div>
+              <div class="mcpcall" style="display:inline-flex; flex-direction:column;">
+                <span class="kind">mcp call — azure-devops</span>
+                <span class="tool">mcp__azure-devops__execute_qa_feedback(parent_id, language, feedback_items[])</span>
+                <span class="effect">batch-creates Test Case work items under the PBI, tags applied verbatim, MCP adds only <code>Ai_MCP_Injected</code></span>
+                <span class="unverified">Fallback (per-item): mcp__azure-devops__create_english_test_case / create_arabic_test_case</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="callstep sub">
+          <div class="stepno">3b</div>
+          <div class="stepbody">
+            <div class="stepline">
+              <div class="box mcp"><span class="kind">mcp call result</span><span class="name">azure-devops</span></div>
+              <div class="callverb">produces</div>
+              <div class="box out"><span class="kind">output</span><span class="name">Azure test plan/suite/cases</span></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="callstep">
+          <div class="stepno">4</div>
+          <div class="stepbody">
+            <div class="stepline">
+              <div class="box skill"><span class="kind">skill</span><span class="name">inject-test-cases</span></div>
+              <div class="callverb">auto-runs</div>
+              <div class="box skill"><span class="kind">skill</span><span class="name">create-bug-queries</span></div>
+            </div>
+            <div class="stepdesc">Its final step, always — never a separate user request, except for one-off backfill on a pre-existing PBI.</div>
+          </div>
+        </div>
+
+        <div class="callstep sub">
+          <div class="stepno">4a</div>
+          <div class="stepbody">
+            <div class="stepline">
+              <div class="box skill"><span class="kind">skill</span><span class="name">create-bug-queries</span></div>
+              <div class="callverb">calls</div>
+              <div class="mcpcall" style="display:inline-flex; flex-direction:column;">
+                <span class="kind">mcp call — azure-devops</span>
+                <span class="tool">mcp__azure-devops__ensure_bug_query_hierarchy(backlog_id)</span>
+                <span class="effect">idempotent — creates "Shared Queries/Bugs/Sprint bugs/&lt;sprint&gt;/&lt;feature&gt;" + "&lt;feature&gt; - Automation", or reports existing</span>
+              </div>
+            </div>
+            <div class="stepdesc">Output: bug-query folder hierarchy, ready before any bug is ever filed.</div>
+          </div>
+        </div>
+
+        <div class="callstep">
+          <div class="stepno">5</div>
+          <div class="stepbody">
+            <div class="stepline">
+              <div class="box orch"><span class="kind">orchestrator</span><span class="name">QA Manager hat</span></div>
+              <div class="callverb">invokes (on request)</div>
+              <div class="box skill"><span class="kind">skill</span><span class="name">build-uat-doc</span></div>
+            </div>
+            <div class="stepdesc">Client UAT document sourced from Azure — precondition: cases are already injected and collected in a test suite.</div>
+          </div>
+        </div>
+
+        <div class="callstep sub">
+          <div class="stepno">5a</div>
+          <div class="stepbody">
+            <div class="stepline">
+              <div class="box skill"><span class="kind">skill</span><span class="name">build-uat-doc</span></div>
+              <div class="callverb">calls</div>
+              <div class="mcpcall" style="display:inline-flex; flex-direction:column;">
+                <span class="kind">mcp call — azure-devops</span>
+                <span class="tool">mcp__azure-devops__get_test_cases_from_suite(plan_id, suite_id)</span>
+                <span class="effect">reads the suite; skill filters to <code>Tag = UAT</code> in the agent layer</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="callstep sub">
+          <div class="stepno">5b</div>
+          <div class="stepbody">
+            <div class="stepline">
+              <div class="box skill"><span class="kind">skill</span><span class="name">build-uat-doc</span></div>
+              <div class="callverb">delegates to</div>
+              <div class="box agent"><span class="kind">sub-agent</span><span class="name">drafter</span></div>
+              <div class="callverb">produces</div>
+              <div class="box out"><span class="kind">output</span><span class="name">UAT document (.docx)</span></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="callstep sub">
+          <div class="stepno">5c</div>
+          <div class="stepbody">
+            <div class="stepline">
+              <div class="box skill"><span class="kind">skill</span><span class="name">build-uat-doc</span></div>
+              <div class="callverb">calls</div>
+              <div class="mcpcall" style="display:inline-flex; flex-direction:column;">
+                <span class="kind">mcp call — azure-devops</span>
+                <span class="tool">mcp__azure-devops__review_uat_document(uat_file_path)</span>
+                <span class="effect">review pass on the produced .docx before hand-off</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="callstep">
+          <div class="stepno">6</div>
+          <div class="stepbody">
+            <div class="stepline">
+              <div class="box orch"><span class="kind">orchestrator</span><span class="name">QA Manager hat</span></div>
+              <div class="callverb">invokes (alternative)</div>
+              <div class="box skill"><span class="kind">skill</span><span class="name">build-chat-uat-doc</span></div>
+              <div class="callverb">delegates to</div>
+              <div class="box agent"><span class="kind">sub-agent</span><span class="name">drafter</span></div>
+              <div class="callverb">produces</div>
+              <div class="box out"><span class="kind">output</span><span class="name">UAT document (.docx)</span></div>
+            </div>
+            <div class="stepdesc">No Azure read at all — builds straight from the approved Phase-1 chat set. Use when cases aren't injected yet, or no test suite exists.</div>
+          </div>
+        </div>
+
+        <div class="callstep">
+          <div class="stepno">7</div>
+          <div class="stepbody">
+            <div class="stepline">
+              <div class="box orch"><span class="kind">orchestrator</span><span class="name">QA Manager hat</span></div>
+              <div class="callverb">invokes (on request)</div>
+              <div class="box skill"><span class="kind">skill</span><span class="name">create-user-manual</span></div>
+              <div class="callverb">delegates to</div>
+              <div class="box agent"><span class="kind">sub-agent</span><span class="name">drafter</span></div>
+            </div>
+            <div class="stepdesc">Fixed iHorizons template. Screenshot-gated — will not build without screenshots.</div>
+          </div>
+        </div>
+
+        <div class="callstep sub">
+          <div class="stepno">7a</div>
+          <div class="stepbody">
+            <div class="stepline">
+              <div class="box agent"><span class="kind">sub-agent</span><span class="name">drafter</span></div>
+              <div class="callverb">calls</div>
+              <div class="mcpcall" style="display:inline-flex; flex-direction:column;">
+                <span class="kind">mcp call — playwright</span>
+                <span class="tool">mcp__playwright__browser_navigate → mcp__playwright__browser_resize → mcp__playwright__browser_take_screenshot</span>
+                <span class="effect">captures each screen state at a fixed viewport (web). Mobile: same role via the Appium MCP once connected.</span>
+              </div>
+            </div>
+            <div class="stepdesc">Produces: end-user feature manual (.docx), branded, step-by-step.</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="gaterow">
+        <div class="gt">GATE — Hat Switch</div>
+        <div class="gs">Automation begins only when the User explicitly asks (or accepts the Phase-1 lookahead offer) — never auto-triggered after injection. The orchestrator then switches from the QA Manager hat to the SDET hat.</div>
+      </div>
+    </section>
+
+    <!-- ============ PHASE 3 ============ -->
+    <section class="phase" id="p3">
+      <div class="phasehead"><span class="pid">P3</span><h3>Automation Layer</h3></div>
+      <p class="phasesub">Turn the injected Automation-tagged cases into runnable pytest tests — Playwright for web, Appium for mobile.</p>
+      <dl class="phasemeta">
+        <dt>Trigger</dt><dd>User asks to automate (post-injection)</dd>
+        <dt>Writes to</dt><dd>./automation/ (git-ignored, local framework)</dd>
+        <dt>Skills used</dt><dd>route-automation, prep-automation-env, scaffold-automation-framework, extract-locators, automate-test-case, run-automation</dd>
+        <dt>Sub-agents used</dt><dd>senior-web-automation-eng, senior-mobile-automation-eng</dd>
+      </dl>
+
+      <div class="callseq">
+        <div class="callstep">
+          <div class="stepno">1</div>
+          <div class="stepbody">
+            <div class="stepline">
+              <div class="box orch"><span class="kind">orchestrator</span><span class="name">SDET hat</span></div>
+              <div class="callverb">invokes</div>
+              <div class="box skill"><span class="kind">skill</span><span class="name">route-automation(parent_pbi_id)</span></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="callstep sub">
+          <div class="stepno">1a</div>
+          <div class="stepbody">
+            <div class="stepline">
+              <div class="box skill"><span class="kind">skill</span><span class="name">route-automation</span></div>
+              <div class="callverb">calls</div>
+              <div class="mcpcall" style="display:inline-flex; flex-direction:column;">
+                <span class="kind">mcp call — azure-devops</span>
+                <span class="tool">mcp__azure-devops__review_test_coverage</span>
+                <span class="effect">reads the injected batch under the PBI; classifies by Platform tag (Web/Android/iOS/Control_Panel)</span>
+                <span class="unverified">Skill doc hedges "or equivalent" — get_test_cases_from_suite is the alternative read.</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="callstep">
+          <div class="stepno">2</div>
+          <div class="stepbody">
+            <div class="stepline">
+              <div class="box skill"><span class="kind">skill</span><span class="name">route-automation</span></div>
+              <div class="callverb">runs (per surface)</div>
+              <div class="box skill"><span class="kind">skill</span><span class="name">prep-automation-env(surface)</span></div>
+            </div>
+            <div class="stepdesc">Checks MCP registration, host toolchain, and framework presence. No MCP call itself — reads <code>.mcp.json</code> and the filesystem. Auto-invokes <code>scaffold-automation-framework</code> if the framework is missing. iOS on non-macOS is reported ACTIONABLE, not silently skipped.</div>
+          </div>
+        </div>
+
+        <div class="gaterow" style="margin-left:0;">
+          <div class="gt">GATE — Approval Gate (human approval required)</div>
+          <div class="gs"><code>route-automation</code> shows the plan (which surfaces, how many cases) and waits for explicit approval before any engineer runs. Always pauses, even on an all-green environment report.</div>
+        </div>
+
+        <div class="callstep" style="margin-top:20px;">
+          <div class="stepno">3</div>
+          <div class="stepbody">
+            <div class="stepline">
+              <div class="box orch"><span class="kind">orchestrator</span><span class="name">SDET hat</span></div>
+              <div class="callverb">delegates to</div>
+              <div class="box agent"><span class="kind">sub-agent</span><span class="name">senior-web-automation-eng</span></div>
+              <span style="color:var(--ink-soft); font-size:.8rem;">/</span>
+              <div class="box agent"><span class="kind">sub-agent</span><span class="name">senior-mobile-automation-eng</span></div>
+            </div>
+            <div class="stepdesc">On approval, one delegation per ready surface. iOS on a non-macOS host is skipped here with an explicit warning.</div>
+          </div>
+        </div>
+
+        <div class="callstep">
+          <div class="stepno">4</div>
+          <div class="stepbody">
+            <div class="stepline">
+              <div class="box agent"><span class="kind">sub-agent</span><span class="name">automation engineer</span></div>
+              <div class="callverb">invokes</div>
+              <div class="box skill"><span class="kind">skill</span><span class="name">extract-locators(target)</span></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="callstep sub">
+          <div class="stepno">4a</div>
+          <div class="stepbody">
+            <div class="stepline">
+              <div class="box skill"><span class="kind">skill</span><span class="name">extract-locators</span></div>
+              <div class="callverb">calls (web)</div>
+              <div class="mcpcall" style="display:inline-flex; flex-direction:column;">
+                <span class="kind">mcp call — playwright</span>
+                <span class="tool">mcp__playwright__browser_navigate → mcp__playwright__browser_snapshot</span>
+                <span class="effect">reads the live DOM + accessibility tree at the framework's default viewport; locators written into the Page Object</span>
+              </div>
+            </div>
+            <div class="stepdesc">Mobile: the Appium MCP plays the same role, reading the UI hierarchy into the Screen Object. This repo has not documented Appium's specific tool function names yet — only the server's role is confirmed.</div>
+          </div>
+        </div>
+
+        <div class="callstep">
+          <div class="stepno">5</div>
+          <div class="stepbody">
+            <div class="stepline">
+              <div class="box agent"><span class="kind">sub-agent</span><span class="name">automation engineer</span></div>
+              <div class="callverb">invokes</div>
+              <div class="box skill"><span class="kind">skill</span><span class="name">automate-test-case</span></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="callstep sub">
+          <div class="stepno">5a</div>
+          <div class="stepbody">
+            <div class="stepline">
+              <div class="box skill"><span class="kind">skill</span><span class="name">automate-test-case</span></div>
+              <div class="callverb">calls</div>
+              <div class="mcpcall" style="display:inline-flex; flex-direction:column;">
+                <span class="kind">mcp call — azure-devops</span>
+                <span class="tool">mcp__azure-devops__get_test_cases_from_suite(plan_id, suite_id)</span>
+                <span class="effect">reads the <code>Tag = Automation</code> cases from the injected suite (the full automatable backlog, not just Regression)</span>
+              </div>
+            </div>
+            <div class="stepdesc">Writes the pytest test: AAA shape, Page/Screen Object calls only (no raw driver), QA traceability ID + markers, concrete data mirrored from the case.</div>
+          </div>
+        </div>
+
+        <div class="callstep">
+          <div class="stepno">6</div>
+          <div class="stepbody">
+            <div class="stepline">
+              <div class="box agent"><span class="kind">sub-agent</span><span class="name">automation engineer</span></div>
+              <div class="callverb">invokes</div>
+              <div class="box skill"><span class="kind">skill</span><span class="name">run-automation</span></div>
+              <div class="callverb">produces</div>
+              <div class="box out"><span class="kind">output</span><span class="name">Automated tests + Allure report</span></div>
+            </div>
+            <div class="stepdesc">Runs pytest locally by marker (web/android/ios/control_panel/regression) — no MCP call. Post-back of results to Azure stays deferred until explicitly enabled.</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="gaterow">
+        <div class="gt">GATE — Failures Detected (automatic, no human gate)</div>
+        <div class="gs">A failed run flows straight into Phase 3b — the one transition in the whole pipeline that needs no approval, because dedup (not a human) is what prevents duplicate bug filing downstream.</div>
+      </div>
+    </section>
+
+    <!-- ============ PHASE 3b ============ -->
+    <section class="phase" id="p3b">
+      <div class="phasehead"><span class="pid">P3b</span><h3>Bug Reporting on Failure</h3></div>
+      <p class="phasesub">The automatic tail of any red run: triage the failures, then file or update one Bug per failure.</p>
+      <dl class="phasemeta">
+        <dt>Trigger</dt><dd>run-automation completes with failures</dd>
+        <dt>Writes to</dt><dd>Azure DevOps Bug work items, .html summary report</dd>
+        <dt>Skills used</dt><dd>triage-failures, create-azure-bug, generate-summary-report</dd>
+        <dt>Sub-agents used</dt><dd>quality-control-engineer, test-failure-triage</dd>
+      </dl>
+
+      <div class="callseq">
+        <div class="callstep">
+          <div class="stepno">1</div>
+          <div class="stepbody">
+            <div class="stepline">
+              <div class="box orch"><span class="kind">orchestrator</span><span class="name">SDET hat</span></div>
+              <div class="callverb">delegates to</div>
+              <div class="box agent"><span class="kind">sub-agent</span><span class="name">quality-control-engineer</span></div>
+            </div>
+            <div class="stepdesc">Reads the Allure results (local filesystem — no MCP call) and extracts one structured entry per failure: test name, Test Case ID (from the traceability marker), error message, expected/actual result, screenshot path, run URL.</div>
+          </div>
+        </div>
+
+        <div class="callstep">
+          <div class="stepno">2</div>
+          <div class="stepbody">
+            <div class="stepline">
+              <div class="box orch"><span class="kind">orchestrator</span><span class="name">SDET hat</span></div>
+              <div class="callverb">invokes</div>
+              <div class="box skill"><span class="kind">skill</span><span class="name">triage-failures</span></div>
+              <div class="callverb">delegates to</div>
+              <div class="box agent"><span class="kind">sub-agent</span><span class="name">test-failure-triage</span></div>
+            </div>
+            <div class="stepdesc">Reads the Allure artifacts (results + history for retries/flakiness — no MCP call) and classifies every failed/broken test as PRODUCT_BUG, AUTOMATION_BUG, ENVIRONMENT_ERROR, or NEEDS_INVESTIGATION, each with confidence, evidence, and a suggested owner.</div>
+          </div>
+        </div>
+
+        <div class="callstep">
+          <div class="stepno">3</div>
+          <div class="stepbody">
+            <div class="stepline">
+              <div class="box agent"><span class="kind">sub-agent</span><span class="name">test-failure-triage</span></div>
+              <div class="callverb">produces</div>
+              <div class="box out"><span class="kind">output</span><span class="name">Bug decision (verdict + owner, per failure)</span></div>
+            </div>
+            <div class="stepdesc">This decision informs step 5 below — it is analysis-only and never files or fixes anything itself.</div>
+          </div>
+        </div>
+
+        <div class="callstep">
+          <div class="stepno">4</div>
+          <div class="stepbody">
+            <div class="stepline">
+              <div class="box orch"><span class="kind">orchestrator</span><span class="name">SDET hat</span></div>
+              <div class="callverb">invokes (per failure)</div>
+              <div class="box skill"><span class="kind">skill</span><span class="name">create-azure-bug</span></div>
+            </div>
+            <div class="stepdesc">No confirmation gate — every failure is eligible by design; dedup is the only decision. Informed by the quality-control-engineer's failure list (step 1) and the test-failure-triage decision (step 3).</div>
+          </div>
+        </div>
+
+        <div class="callstep sub">
+          <div class="stepno">4a</div>
+          <div class="stepbody">
+            <div class="stepline">
+              <div class="box skill"><span class="kind">skill</span><span class="name">create-azure-bug</span></div>
+              <div class="callverb">calls</div>
+              <div class="mcpcall" style="display:inline-flex; flex-direction:column;">
+                <span class="kind">mcp call — azure-devops</span>
+                <span class="tool">mcp__azure-devops__find_existing_bug(test_case_id)</span>
+                <span class="effect">dedup check — searches for an open Bug already tagged <code>TC:&lt;test_case_id&gt;</code></span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="callstep sub">
+          <div class="stepno">4b</div>
+          <div class="stepbody">
+            <div class="stepline">
+              <div class="box skill"><span class="kind">skill</span><span class="name">create-azure-bug</span></div>
+              <div class="callverb">calls (not found)</div>
+              <div class="mcpcall" style="display:inline-flex; flex-direction:column;">
+                <span class="kind">mcp call — azure-devops</span>
+                <span class="tool">mcp__azure-devops__create_bug(test_case_id, test_name, error_message, expected_result, actual_result, repro_steps, priority, screenshot_path, run_url)</span>
+                <span class="effect">creates the Bug; plain-English title from actual_result; raw error under "Automation Failure Root Cause"</span>
+              </div>
+            </div>
+            <div class="stepdesc">If found instead: <code>mcp__azure-devops__add_bug_occurrence(bug_id, error_message, run_url)</code> — appends and reopens from Resolved if needed. Never both, never neither.</div>
+          </div>
+        </div>
+
+        <div class="callstep">
+          <div class="stepno">5</div>
+          <div class="stepbody">
+            <div class="stepline">
+              <div class="box mcp"><span class="kind">mcp call result</span><span class="name">azure-devops</span></div>
+              <div class="callverb">produces</div>
+              <div class="box out"><span class="kind">output</span><span class="name">Bug work item (created or updated)</span></div>
+            </div>
+            <div class="stepdesc">Already discoverable via the query hierarchy <code>create-bug-queries</code> provisioned in Phase 2 — no further provisioning happens here.</div>
+          </div>
+        </div>
+
+        <div class="callstep">
+          <div class="stepno">6</div>
+          <div class="stepbody">
+            <div class="stepline">
+              <div class="box orch"><span class="kind">orchestrator</span><span class="name">SDET hat</span></div>
+              <div class="callverb">invokes (after all failures processed)</div>
+              <div class="box skill"><span class="kind">skill</span><span class="name">generate-summary-report</span></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="callstep sub">
+          <div class="stepno">6a</div>
+          <div class="stepbody">
+            <div class="stepline">
+              <div class="box skill"><span class="kind">skill</span><span class="name">generate-summary-report</span></div>
+              <div class="callverb">calls</div>
+              <div class="mcpcall" style="display:inline-flex; flex-direction:column;">
+                <span class="kind">mcp call — azure-devops</span>
+                <span class="tool">mcp__azure-devops__get_test_outcome_summary / get_test_run_outcome_summary / generate_qa_report / get_query_summary</span>
+                <span class="effect">whichever supplies the test-suite outcome and/or bug/work-item payload for this run</span>
+              </div>
+            </div>
+            <div class="stepdesc">Produces: QA summary report (.html) — pass/fail totals, bugs filed vs. updated. Read-only; never creates or edits data.</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <footer class="docfoot">
+      <span>Source of truth: <code>README.md</code> · <code>CLAUDE.md</code> · <code>.claude/</code></span>
+      <span>MCP tool names verified against <code>.claude/skills/*/SKILL.md</code> and <code>.claude/context/*.md</code> as of this document's authoring — re-verify against the live registry before relying on any single call.</span>
+    </footer>
+  </div>
+
+<script>
+  (function(){
+    var root=document.documentElement, btn=document.getElementById('themeBtn');
+    btn.addEventListener('click',function(){
+      var cur=root.getAttribute('data-theme');
+      if(!cur){ cur = matchMedia('(prefers-color-scheme: dark)').matches ? 'dark':'light'; }
+      root.setAttribute('data-theme', cur==='dark'?'light':'dark');
+    });
+  })();
+</script>
+</body>
+</html>

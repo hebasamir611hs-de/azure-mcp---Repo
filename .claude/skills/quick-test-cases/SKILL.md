@@ -27,6 +27,16 @@ coverage. Use for smoke / ad-hoc / "give me the critical ones" requests.
 1. **Load context** — read `@.claude/context/active/background.md` if `$ARGUMENTS` is a
    real feature/PBI needing project scope. (Pull the PBI with
    `mcp__azure-devops__get_story_for_analysis` only if an ID was given.)
+   **Design source cascade — Figma first, then images, then ask** (same order as
+   `analyze-pbi`, condensed here — see that skill for the full rationale): scan the
+   description/AC for a Figma link → if found, invoke `verify-figma-design` with it
+   and wait for verified tokens before deriving anything. No link → check
+   `has_images` (metadata only, no vision cost); if true, **STOP and ask the human
+   once:** *"This PBI contains N image(s) — should I consider the attached image(s)
+   as design input?"* **YES** → call `mcp__azure-devops__get_story_for_analysis_with_images`
+   (vision cost) and use them. **NO** → ignore the images, proceed on text alone.
+   Neither Figma nor images → **ask once:** *"No design reference found — proceed
+   text-only, or can you provide a Figma link?"* and act on the answer.
 2. **Pick the sharp subset** — from `@.claude/context/analysis-framework.md`, select:
    - the **happy path** (the core successful journey),
    - the **top critical negatives** (money flow, auth, data-loss risks first),
