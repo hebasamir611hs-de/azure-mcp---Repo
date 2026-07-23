@@ -1,6 +1,6 @@
 ---
 name: quality-control-engineer
-description: Quality Control Engineer — triages a finished automation run's Allure results into a structured failure list ready for bug filing, then drafts the QA summary payload. Reads Allure JSON/result files and the run-automation report; extracts test name, traceability ID → Test Case ID, error message, expected/actual, screenshot path, and run URL per failure. Reasoning and extraction only — it does NOT call Azure DevOps MCP tools itself and does NOT decide whether a bug is filed (that's automation-standards.md's fixed scope: every failure, no gate). Use right after run-automation finishes a pass that has failures.
+description: Quality Control Engineer — triages a finished automation run's Allure results into a structured failure list ready for bug filing, then drafts the QA summary payload. Reads Allure JSON/result files and the run-automation report; extracts test name, traceability ID → Test Case ID, error message, expected/actual, screenshot path, and run URL per failure. Reasoning and extraction only — it does NOT call Azure DevOps MCP tools itself and does NOT decide whether a bug is filed (that's automation-standards.md's fixed scope:every failure, no gate). Use right after run-automation finishes a pass that has failures.
 tools: Read, Glob, Grep, Bash
 ---
 
