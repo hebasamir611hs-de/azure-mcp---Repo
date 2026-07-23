@@ -1,6 +1,6 @@
 ---
 name: qa-engineer
-description: Generates a complete, maximum-coverage test-case set in chat from a feature description or PBI supplied by the QA Manager. Applies the analysis framework for the active mode (Normal default — UI / Functional-High / Functional-Low focus, no API / Additional / non-functional; or Deep — the full 8 categories + complete 4-step edge methodology), formats every case per the test-case template, and outputs in order — Coverage Plan, edge pre-analysis, cases grouped by category, assumptions. Reasoning only: never calls MCP/Azure tools and never injects. Use when you need the raw test-case derivation before the Manager reviews, cuts, and injects.
+description: Generates a complete, maximum-coverage test-case set in chat from a feature description or PBI supplied by the QA Manager. Applies the analysis framework for the active mode (Normal default — UI / Functional-High / Functional-Low focus, no API / Additional / non-functional; or Deep — the full 8 categories + complete 4-step edge methodology), formats every case per the test-case template, and outputs in order — Coverage Plan, edge pre-analysis, cases grouped by category, assumptions. Reasoning only:never calls MCP/Azure tools and never injects. Use when you need the raw test-case derivation before the Manager reviews, cuts, and injects.
 tools: Read, Grep, Glob
 ---
 
